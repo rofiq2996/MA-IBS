@@ -6,11 +6,11 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Student } from '../types';
 
 export function AdminAcademic() {
-  const [classes, setClasses] = useState(mockClasses);
+  const [classes, setClasses] = useState<any[]>([]);
 
-  const [allStudents, setAllStudents] = useState<Student[]>(mockStudents);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
 
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     
@@ -35,7 +35,7 @@ export function AdminAcademic() {
 
   useEffect(() => {
     
-    mockStudents.splice(0, mockStudents.length, ...allStudents);
+    
   }, [allStudents]);
 
   const openAdd = () => {
@@ -72,26 +72,32 @@ export function AdminAcademic() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    const name = `${tingkat} ${rombel}`.trim();
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Update Users
-    const updatedUsers = users.map(u => {
-      if (u.id === waliKelasId) {
-        return { ...u, role: 'walas', className: name };
-      } else if (u.className === oldName || u.className === name) {
-        return { ...u, role: 'guru', className: undefined };
-      }
-      return u;
-    });
-    setUsers(updatedUsers);
-    
-    if (editingId) {
-      setClasses(classes.map(c => c.id === editingId ? { ...c, name, students: allStudents.filter(s => s.className === name).length } : c));
-    } else {
-      setClasses([...classes, { id: Date.now(), name, students: 0 }]);
+    const name = `${tingkat} ${rombel}`.trim();
+    const payload = {
+       name,
+       wali_kelas_id: waliKelasId ? Number(waliKelasId) : null
+    };
+
+    try {
+        if (editingId) {
+            await apiClient(`/crud.php?table=classes&id=${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            // Update walas assignment logic
+            if (waliKelasId) {
+               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', class_name: name }) });
+            }
+        } else {
+            await apiClient('/crud.php?table=classes', { method: 'POST', body: JSON.stringify(payload) });
+            if (waliKelasId) {
+               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', class_name: name }) });
+            }
+        }
+        fetchData();
+    } catch (e) {
+        console.error(e);
     }
+    
     setIsModalOpen(false);
   };
 

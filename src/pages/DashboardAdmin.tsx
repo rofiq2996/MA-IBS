@@ -11,6 +11,25 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 import { mockUsers, mockClasses, mockStudents } from '../data/mock';
 export function DashboardAdmin() {
+  const fetchData = async () => {
+    try {
+      const [studentsData, classesData, usersData] = await Promise.all([
+        apiClient('/crud.php?table=students'),
+        apiClient('/crud.php?table=classes'),
+        apiClient('/crud.php?table=users')
+      ]);
+      setStudents(studentsData);
+      setClasses(classesData);
+      setUsers(usersData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
@@ -25,10 +44,10 @@ export function DashboardAdmin() {
     };
     fetchAnnouncements();
   }, []);
-  const totalSakit = mockStudents.reduce((acc, curr) => acc + (curr.attendance?.sick || 0), 0);
-  const totalIzin = mockStudents.reduce((acc, curr) => acc + (curr.attendance?.permission || 0), 0);
-  const totalAlpa = mockStudents.reduce((acc, curr) => acc + (curr.attendance?.absent || 0), 0);
-  const totalHadir = mockStudents.reduce((acc, curr) => acc + (curr.attendance?.present || 0), 0);
+  const totalSakit = students.reduce((acc, curr) => acc + (curr.attendance?.sick || 0), 0);
+  const totalIzin = students.reduce((acc, curr) => acc + (curr.attendance?.permission || 0), 0);
+  const totalAlpa = students.reduce((acc, curr) => acc + (curr.attendance?.absent || 0), 0);
+  const totalHadir = students.reduce((acc, curr) => acc + (curr.attendance?.present || 0), 0);
   const totalHari = totalSakit + totalIzin + totalAlpa + totalHadir;
   const persenHadir = totalHari > 0 ? Math.round((totalHadir / totalHari) * 100) : 0;
   return (

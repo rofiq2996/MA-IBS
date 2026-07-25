@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useAuth } from '../context/AuthContext';
 import bcrypt from 'bcryptjs';
+import { apiClient } from '../lib/apiClient';
 import { AdminAcademic } from './AdminAcademic';
 import { AdminKenaikanKelas } from './AdminKenaikanKelas';
 import { AdminRombel } from './AdminRombel';
@@ -18,11 +19,11 @@ export function AdminStudents() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [students, setStudents] = useState<Student[]>([]);
 
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
 
-  const [classes] = useState(mockClasses);
+  const [classes, setClasses] = useState<{name:string}[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,9 +88,43 @@ export function AdminStudents() {
     }
   }, []);
 
+    const fetchData = async () => {
+    try {
+      const [studentsData, classesData, usersData] = await Promise.all([
+        apiClient('/crud.php?table=students'),
+        apiClient('/crud.php?table=classes'),
+        apiClient('/crud.php?table=users')
+      ]);
+      const mappedStudents = studentsData.map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        nis: s.nis,
+        className: s.class_name,
+        gender: s.gender,
+        parentId: s.parent_id ? String(s.parent_id) : undefined,
+        behaviorScore: s.behavior_score ? Number(s.behavior_score) : 100
+      }));
+      setStudents(mappedStudents);
+      setClasses(classesData.map((c: any) => ({ name: c.name })));
+      const mappedUsers = usersData.map((u: any) => ({
+        id: String(u.id),
+        name: u.name,
+        username: u.username,
+        role: u.role,
+        roles: [u.role],
+        gender: u.gender,
+      }));
+      setUsers(mappedUsers);
+    } catch (e) {
+      console.error(e);
+      setFeedback({ type: 'error', message: 'Gagal memuat data dari database.' });
+    }
+  };
+
   useEffect(() => {
-    
-  }, [students]);
+    fetchData();
+  }, []);
+
 
   useEffect(() => {
     
@@ -124,113 +159,52 @@ export function AdminStudents() {
     setIsModalOpen(true);
   };
 
-  const confirmDeleteStudent = () => {
+  const confirmDeleteStudent = async () => {
     if (deleteConfirmId) {
-      const updated = students.filter(s => s.id !== deleteConfirmId);
-      setStudents(updated);
-      mockStudents.splice(0, mockStudents.length, ...updated);
+      try {
+        await apiClient(`/crud.php?table=students&id=${deleteConfirmId}`, { method: 'DELETE' });
+        setFeedback({ type: 'success', message: 'Data siswa berhasil dihapus.' });
+        fetchData();
+      } catch (e) {
+        setFeedback({ type: 'error', message: 'Gagal menghapus siswa.' });
+      }
       setDeleteConfirmId(null);
-      setFeedback({ type: 'success', message: 'Data siswa berhasil dihapus.' });
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!studentName.trim() || !studentNis.trim() || !studentGrade.trim()) {
-      setFeedback({ type: 'error', message: 'Nama, NIS, dan Jenjang Kelas wajib diisi.' });
+    if (!studentName.trim() || !studentNis.trim() || !studentClassName.trim()) {
+      setFeedback({ type: 'error', message: 'Nama, NIS, dan Kelas wajib diisi.' });
       return;
     }
 
-    let updatedList: Student[] = [];
-    let updatedUsers: User[] = [...users];
+    const payload: any = {
+      name: studentName.trim(),
+      nis: studentNis.trim(),
+      class_name: studentClassName,
+      gender: studentGender,
+    };
 
     if (editingId) {
-      updatedList = students.map(s => {
-        if (s.id === editingId) {
-          return {
-            ...s,
-            name: studentName.trim(),
-            nis: studentNis.trim(),
-            grade: studentGrade,
-            className: studentClassName.trim(),
-            gender: studentGender,
-          };
-        }
-        return s;
-      });
-
-      // Update associated user if exists
-      const userIndex = updatedUsers.findIndex(u => u.username === studentNis.trim() && u.role === 'siswa');
-      if (userIndex !== -1 && studentPassword.trim()) {
-        updatedUsers[userIndex] = {
-          ...updatedUsers[userIndex],
-          name: studentName.trim(),
-          password: bcrypt.hashSync(studentPassword.trim(), 10),
-        };
-      } else if (userIndex === -1 && studentPassword.trim()) {
-         updatedUsers.push({
-            id: String(Date.now() + 1),
-            name: studentName.trim(),
-            username: studentNis.trim(),
-            password: bcrypt.hashSync(studentPassword.trim(), 10),
-            role: 'siswa',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(studentName.trim())}`,
-         });
+      try {
+        await apiClient(`/crud.php?table=students&id=${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        setFeedback({ type: 'success', message: 'Data siswa berhasil diperbarui.' });
+      } catch (e) {
+        setFeedback({ type: 'error', message: 'Gagal memperbarui siswa.' });
+        return;
       }
-
     } else {
-      const newStudentId = String(Date.now());
-      const newStudent: Student = {
-        id: newStudentId,
-        name: studentName.trim(),
-        nis: studentNis.trim(),
-        grade: studentGrade,
-        className: studentClassName.trim(),
-        gender: studentGender,
-      };
-      updatedList = [...students, newStudent];
-
-      // Auto generate user account for Siswa (Only for Grade XII)
-      const isXII = studentGrade === 'XII' || studentClassName.includes('XII') || studentClassName.includes('12');
-      if (isXII || studentPassword.trim()) {
-        const passToUse = studentPassword.trim() || '12345';
-        updatedUsers.push({
-            id: String(Date.now() + 1),
-            name: studentName.trim(),
-            username: studentNis.trim(),
-            password: bcrypt.hashSync(passToUse, 10),
-            role: 'siswa',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(studentName.trim())}`,
-        });
+      try {
+        await apiClient('/crud.php?table=students', { method: 'POST', body: JSON.stringify(payload) });
+        setFeedback({ type: 'success', message: 'Data siswa berhasil ditambahkan.' });
+      } catch (e) {
+        setFeedback({ type: 'error', message: 'Gagal menambahkan siswa.' });
+        return;
       }
-      
-      // Auto generate orang tua account
-      const parentName = 'Ayah/Bunda Ananda ' + studentName.trim();
-      const baseParentUsername = studentName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-      let parentUsername = baseParentUsername;
-      let counter = 1;
-      while (updatedUsers.some(u => u.username === parentUsername)) {
-        parentUsername = `${baseParentUsername}${counter}`;
-        counter++;
-      }
-      updatedUsers.push({
-          id: String(Date.now() + 2),
-          name: parentName,
-          username: parentUsername,
-          password: bcrypt.hashSync('12345', 10),
-          role: 'ortu',
-          childId: newStudentId,
-          childName: studentName.trim(),
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(parentName)}`,
-      });
     }
-    setStudents(updatedList);
-    setUsers(updatedUsers);
-    mockStudents.splice(0, mockStudents.length, ...updatedList);
-    mockUsers.splice(0, mockUsers.length, ...updatedUsers);
     setIsModalOpen(false);
-    setFeedback({ type: 'success', message: `Data siswa berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}.` });
+    fetchData();
   };
 
   const filteredStudents = students.filter(s =>

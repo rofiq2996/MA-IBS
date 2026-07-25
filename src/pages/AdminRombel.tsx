@@ -3,20 +3,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { mockStudents, mockClasses } from '../data/mock';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Users, UserPlus, UserMinus, Search } from 'lucide-react';
+import { apiClient } from '../lib/apiClient';
 import { Student } from '../types';
 
 export function AdminRombel() {
-  const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [students, setStudents] = useState<Student[]>([]);
 
-  const [classes] = useState(mockClasses);
+  const [classes, setClasses] = useState<{name:string}[]>([]);
 
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [searchAvailable, setSearchAvailable] = useState('');
   const [searchInClass, setSearchInClass] = useState('');
 
+    const fetchData = async () => {
+    try {
+       const [studentsData, classesData] = await Promise.all([
+          apiClient('/crud.php?table=students'),
+          apiClient('/crud.php?table=classes')
+       ]);
+       setStudents(studentsData.map((s:any) => ({
+          id: String(s.id),
+          name: s.name,
+          nis: s.nis,
+          className: s.class_name,
+          gender: s.gender,
+          grade: s.class_name ? s.class_name.split(' ')[0] : 'X'
+       })));
+       setClasses(classesData.map((c:any) => ({ name: c.name })));
+    } catch (e) {
+       console.error(e);
+    }
+  };
+
   useEffect(() => {
-    
-  }, [students]);
+    fetchData();
+  }, []);
+
 
   const studentsInClass = students.filter(s => s.className === selectedClass && selectedClass !== '');
   
