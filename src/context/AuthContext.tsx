@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userId: string, apiUser?: any) => {
     if (apiUser) {
-        const u = { ...apiUser, roles: [apiUser.role] };
+        const u = { ...apiUser, roles: apiUser.roles || [apiUser.role] };
         setUser(u);
         if (typeof window !== 'undefined') {
           localStorage.setItem('currentUser', JSON.stringify(u));

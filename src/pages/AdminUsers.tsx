@@ -87,7 +87,7 @@ export function AdminUsers() {
         username: u.username,
         password: u.password,
         role: u.role,
-        roles: [u.role],
+        roles: (typeof u.roles === 'string' ? JSON.parse(u.roles) : u.roles) || [u.role],
         avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`,
         gender: u.gender,
         className: u.class_name,
@@ -306,28 +306,32 @@ export function AdminUsers() {
         });
 
         if (successCount > 0) {
-          Promise.all(newUsers.map(async (u) => {
-             const payload = {
-                name: u.name,
-                username: u.username,
-                password: u.password, // already hashed by bcrypt in this script
-                role: u.role,
-                gender: u.gender || null,
-                class_name: u.className || null,
-                child_id: u.childId || null,
-                avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`,
-             };
-             await apiClient(`/crud.php?table=users`, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-             });
-          })).then(() => {
-             fetchUsers();
-             setFeedback({ type: 'success', message: `Berhasil mengimpor ${successCount} akun Guru & Tendik dari file Excel.` });
-          }).catch((err) => {
-             console.error(err);
-             setFeedback({ type: 'error', message: `Berhasil memproses excel namun gagal menyimpan ke database.` });
-          });
+          (async () => {
+             try {
+                for (const u of newUsers) {
+                   const payload = {
+                      name: u.name,
+                      username: u.username,
+                      password: u.password,
+                      role: u.role,
+                      roles: JSON.stringify(u.roles || [u.role]),
+                      gender: u.gender || null,
+                      class_name: u.className || null,
+                      child_id: u.childId || null,
+                      avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`,
+                   };
+                   await apiClient(`/crud.php?table=users`, {
+                      method: 'POST',
+                      body: JSON.stringify(payload),
+                   });
+                }
+                fetchUsers();
+                setFeedback({ type: 'success', message: `Berhasil mengimpor ${successCount} akun Guru & Tendik dari file Excel.` });
+             } catch (err) {
+                console.error(err);
+                setFeedback({ type: 'error', message: `Berhasil memproses excel namun gagal menyimpan ke database.` });
+             }
+          })();
         } else {
           setFeedback({ type: 'error', message: 'Tidak ada data valid yang dapat diimpor dari file Excel.' });
         }
@@ -400,28 +404,32 @@ export function AdminUsers() {
     }
 
     let generatedUsername = userUsername.trim();
-    if (!editingId) {
+    if (!editingId && !generatedUsername) {
       const nameParts = userName.trim().split(' ').filter(Boolean);
-      generatedUsername = nameParts[0].toLowerCase();
-      const isStaff = userRoles.some(r => r !== 'ortu' && r !== 'siswa');
-      if (isStaff) {
-        let currentUsername = generatedUsername;
-        let counter = 1;
-        let finalUsername = currentUsername;
-        while (users.some(u => u.username === finalUsername)) {
-          finalUsername = `${currentUsername}${counter}`;
-          counter++;
-        }
-        generatedUsername = finalUsername;
+      let currentUsername = (nameParts[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+      let counter = 1;
+      let finalUsername = currentUsername;
+      while (users.some(u => u.username === finalUsername)) {
+        finalUsername = `${currentUsername}${counter}`;
+        counter++;
       }
+      generatedUsername = finalUsername;
     }
     
-    const hashedPassword = userPassword.trim() ? bcrypt.hashSync(userPassword.trim(), 10) : '';
+    // Auto-generate password if empty on creation
+    let finalPassword = userPassword.trim();
+    if (!editingId && !finalPassword) {
+      finalPassword = '12345';
+    }
+    const hashedPassword = finalPassword ? bcrypt.hashSync(finalPassword, 10) : '';
+    
+
 
     const payload: any = {
         name: userName.trim(),
         username: generatedUsername,
-        role: userRoles[0],
+        role: userRoles[0], // fallback
+        roles: JSON.stringify(userRoles), // store array
         gender: userGender || null,
         class_name: userRoles.includes('walas') ? userClassName : null,
         child_id: userRoles.includes('ortu') ? userChildId : null,

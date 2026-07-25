@@ -85,24 +85,71 @@ export function DashboardGuru() {
                     { time: '07:30 - 09:00', class: 'X-IPA 1', subject: 'Matematika Wajib', status: 'Selesai' },
                     { time: '09:15 - 10:45', class: 'XI-IPA 3', subject: 'Matematika Peminatan', status: 'Berlangsung' },
                     { time: '11:00 - 12:30', class: 'XII-IPS 2', subject: 'Matematika Dasar', status: 'Belum Mulai' },
-                  ].map((schedule, i) => (
-                    <tr key={i} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${schedule.status === 'Berlangsung' ? 'bg-emerald-50/30' : ''}`}>
-                      <td className={`py-4 px-4 font-medium ${schedule.status === 'Berlangsung' ? 'text-emerald-700' : 'text-slate-500'}`}>{schedule.time}</td>
-                      <td className={`py-4 px-4 font-bold ${schedule.status === 'Berlangsung' ? 'text-emerald-900' : ''}`}>{schedule.class}</td>
-                      <td className={`py-4 px-4 ${schedule.status === 'Berlangsung' ? 'text-emerald-900' : ''}`}>{schedule.subject}</td>
-                      <td className="py-4 px-4 text-right">
-                        {schedule.status === 'Selesai' && (
-                           <button className="bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded text-[10px] font-bold transition-colors">LIHAT JURNAL</button>
-                        )}
-                        {schedule.status === 'Berlangsung' && (
-                           <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-[10px] font-bold shadow-md transition-colors animate-pulse">ISI ABSENSI</button>
-                        )}
-                        {schedule.status === 'Belum Mulai' && (
-                           <button className="bg-slate-50 text-slate-300 px-3 py-1.5 rounded text-[10px] font-bold cursor-not-allowed">BELUM MULAI</button>
-                        )}
+                  ].map((schedule, i) => {
+                    const isCurrentlyActive = (() => {
+                      try {
+                        const [startStr, endStr] = schedule.time.split(' - ');
+                        const [startHour, startMinute] = startStr.split(':').map(Number);
+                        const [endHour, endMinute] = endStr.split(':').map(Number);
+                        const now = new Date();
+                        const currentHour = now.getHours();
+                        const currentMinute = now.getMinutes();
+                        const currentTimeMinutes = currentHour * 60 + currentMinute;
+                        const startTimeMinutes = startHour * 60 + startMinute;
+                        const endTimeMinutes = endHour * 60 + endMinute;
+                        return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+                      } catch (e) { return false; }
+                    })();
+                    const isButtonsActive = (() => {
+                      try {
+                        const [startStr] = schedule.time.split(' - ');
+                        const [startHour, startMinute] = startStr.split(':').map(Number);
+                        const now = new Date();
+                        const currentHour = now.getHours();
+                        const currentMinute = now.getMinutes();
+                        const currentTimeMinutes = currentHour * 60 + currentMinute;
+                        const startTimeMinutes = startHour * 60 + startMinute;
+                        const cutoffTimeMinutes = 17 * 60; // 17:00
+                        return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= cutoffTimeMinutes;
+                      } catch (e) { return false; }
+                    })();
+                    
+                    return (
+                    <tr key={i} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${isCurrentlyActive ? 'bg-emerald-50/30' : ''}`}>
+                      <td className={`py-4 px-4 font-medium ${isCurrentlyActive ? 'text-emerald-700' : 'text-slate-500'}`}>{schedule.time}</td>
+                      <td className={`py-4 px-4 font-bold ${isCurrentlyActive ? 'text-emerald-900' : ''}`}>{schedule.class}</td>
+                      <td className={`py-4 px-4 ${isCurrentlyActive ? 'text-emerald-900' : ''}`}>{schedule.subject}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex gap-1.5 justify-end">
+                          <button 
+                            disabled={!isButtonsActive}
+                            onClick={() => navigate('/jurnal-mengajar')}
+                            className={`px-3 py-1.5 flex items-center justify-center text-[10px] font-bold rounded transition-all ${
+                              isButtonsActive 
+                                ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 shadow-sm active:scale-95' 
+                                : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed'
+                            }`}
+                            title="Isi Jurnal Mengajar"
+                          >
+                            JURNAL
+                          </button>
+                          <button 
+                            disabled={!isButtonsActive}
+                            onClick={() => navigate('/absensi')}
+                            className={`px-3 py-1.5 flex items-center justify-center text-[10px] font-bold rounded transition-all ${
+                              isButtonsActive 
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-95' 
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }`}
+                            title="Isi Absensi Siswa"
+                          >
+                            ABSENSI
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

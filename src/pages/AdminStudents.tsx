@@ -295,17 +295,41 @@ export function AdminStudents() {
         }).filter(s => s.name && s.nis && s.grade);
 
         if (newStudents.length > 0) {
-          const updatedList = [...students, ...newStudents];
-          setStudents(updatedList);
-          mockStudents.splice(0, mockStudents.length, ...updatedList);
-          
-          if (newUsers.length > 0) {
-             const updatedUserList = [...users, ...newUsers];
-             setUsers(updatedUserList);
-             mockUsers.splice(0, mockUsers.length, ...updatedUserList);
-          }
-          
-          setFeedback({ type: 'success', message: `${newStudents.length} siswa diunggah, ${newUsers.length} akun dibuat.` });
+          (async () => {
+             setFeedback({ type: 'info', message: `Mengunggah ${newStudents.length} siswa...` });
+             try {
+                for (const s of newStudents) {
+                   await apiClient('/crud.php?table=students', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                         name: s.name,
+                         nis: s.nis,
+                         class_name: s.className,
+                         gender: s.gender,
+                         behavior_score: 100
+                      }),
+                   });
+                }
+                for (const u of newUsers) {
+                   await apiClient('/crud.php?table=users', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                         name: u.name,
+                         username: u.username,
+                         password: u.password,
+                         role: u.role,
+                         roles: JSON.stringify([u.role]),
+                         avatar: u.avatar
+                      }),
+                   });
+                }
+                fetchData();
+                setFeedback({ type: 'success', message: `${newStudents.length} siswa diunggah, ${newUsers.length} akun dibuat.` });
+             } catch (err) {
+                console.error(err);
+                setFeedback({ type: 'error', message: 'Berhasil memproses excel namun gagal menyimpan ke database.' });
+             }
+          })();
         } else {
           setFeedback({ type: 'error', message: 'Format Excel tidak sesuai atau data kosong.' });
         }

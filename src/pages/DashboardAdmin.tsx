@@ -11,6 +11,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 import { mockUsers, mockClasses, mockStudents } from '../data/mock';
 export function DashboardAdmin() {
+  const [students, setStudents] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const fetchData = async () => {
     try {
       const [studentsData, classesData, usersData] = await Promise.all([
