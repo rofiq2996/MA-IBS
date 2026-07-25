@@ -1,0 +1,250 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Edit2, Trash2, Plus, X, Check, AlertCircle, Users } from 'lucide-react';
+import { mockClasses, mockUsers, mockStudents } from '../data/mock';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { Student } from '../types';
+
+export function AdminAcademic() {
+  const [classes, setClasses] = useState(mockClasses);
+
+  const [allStudents, setAllStudents] = useState<Student[]>(mockStudents);
+
+  const [users, setUsers] = useState(mockUsers);
+
+  useEffect(() => {
+    
+  }, [classes]);
+  
+  useEffect(() => {
+    
+  }, [users]);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  
+  const [tingkat, setTingkat] = useState('X');
+  const [rombel, setRombel] = useState('');
+  const [students, setStudents] = useState(0);
+  const [waliKelasId, setWaliKelasId] = useState('');
+  const [oldName, setOldName] = useState('');
+  
+  
+  const teachers = users.filter(u => ['guru', 'walas', 'guru_quran'].includes(u.role));
+
+  useEffect(() => {
+    
+    mockStudents.splice(0, mockStudents.length, ...allStudents);
+  }, [allStudents]);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setTingkat('X');
+    setRombel('');
+    setStudents(0);
+    setWaliKelasId('');
+    setOldName('');
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (c: any) => {
+    setEditingId(c.id);
+    const parts = c.name.split(' ');
+    if (['X', 'XI', 'XII'].includes(parts[0])) {
+      setTingkat(parts[0]);
+      setRombel(parts.slice(1).join(' '));
+    } else {
+      setTingkat('X');
+      setRombel(c.name);
+    }
+    setStudents(c.students);
+    setOldName(c.name);
+    const walas = users.find(u => u.role === 'walas' && u.className === c.name);
+    setWaliKelasId(walas ? walas.id : '');
+    setIsModalOpen(true);
+  };
+
+  const confirmDeleteClass = () => {
+    if (deleteConfirmId) {
+      setClasses(classes.filter(c => c.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    const name = `${tingkat} ${rombel}`.trim();
+    e.preventDefault();
+    
+    // Update Users
+    const updatedUsers = users.map(u => {
+      if (u.id === waliKelasId) {
+        return { ...u, role: 'walas', className: name };
+      } else if (u.className === oldName || u.className === name) {
+        return { ...u, role: 'guru', className: undefined };
+      }
+      return u;
+    });
+    setUsers(updatedUsers);
+    
+    if (editingId) {
+      setClasses(classes.map(c => c.id === editingId ? { ...c, name, students: allStudents.filter(s => s.className === name).length } : c));
+    } else {
+      setClasses([...classes, { id: Date.now(), name, students: 0 }]);
+    }
+    setIsModalOpen(false);
+  };
+
+  const getWaliKelas = (className: string) => {
+    const walas = users.find(u => u.role === 'walas' && u.className === className);
+    return walas ? walas.name : 'Belum Ditugaskan';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div></div>
+        <button onClick={openAdd} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Tambah Kelas
+        </button>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Daftar Rombongan Belajar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {classes.map(c => (
+              <div key={c.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <h3 className="font-bold text-lg text-slate-800 mb-1">{c.name}</h3>
+                <p className="text-xs text-slate-500 mb-3">Wali Kelas: <span className="font-semibold text-slate-700">{getWaliKelas(c.name)}</span></p>
+                <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-3">
+                  <span className="text-slate-600">Siswa: {allStudents.filter(s => s.className === c.name).length}</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => openEdit(c)} className="text-emerald-600 hover:text-emerald-700" title="Edit">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setDeleteConfirmId(c.id)} className="text-red-600 hover:text-red-700" title="Hapus">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-visible">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-600">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Konfirmasi Hapus</h3>
+              <p className="text-sm text-slate-600 mb-6">Apakah Anda yakin ingin menghapus kelas ini?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmDeleteClass}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-colors"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-visible my-8">
+            <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100">
+              <h2 className="font-bold text-lg text-slate-800">
+                {editingId ? 'Edit Data Kelas' : 'Tambah Kelas Baru'}
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Tingkat</label>
+                    <CustomSelect
+                      value={tingkat}
+                      onChange={(val) => setTingkat(val)}
+                      options={[
+                        { value: 'X', label: 'X' },
+                        { value: 'XI', label: 'XI' },
+                        { value: 'XII', label: 'XII' },
+                      ]}
+                      searchable={true}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Nama Rombel</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. ar-Rohman"
+                      value={rombel}
+                      onChange={e => setRombel(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+                
+                {rombel && (
+                  <div className="bg-emerald-50 text-emerald-800 p-2 rounded-lg text-xs font-semibold flex items-center gap-2 border border-emerald-100">
+                    <span>Nama Kelas Otomatis:</span>
+                    <span className="text-sm bg-white px-2 py-0.5 rounded border border-emerald-200">{tingkat} {rombel}</span>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Wali Kelas</label>
+                  <CustomSelect
+                    value={waliKelasId}
+                    onChange={(val) => setWaliKelasId(val)}
+                    options={[
+                      { value: '', label: '-- Pilih Wali Kelas --' },
+                      ...teachers.map(t => ({ value: t.id, label: t.name }))
+                    ]}
+                    searchable={true}
+                    placeholder="-- Pilih Wali Kelas --"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 mt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Check className="w-4 h-4" /> {editingId ? 'Simpan Perubahan' : 'Tambahkan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      </div>
+  );
+}

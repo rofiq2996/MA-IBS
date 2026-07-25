@@ -1,0 +1,177 @@
+import React, { useState } from 'react';
+import { UserAnnouncements } from '../components/ui/UserAnnouncements';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { mockStudents } from '../data/mock';
+import { 
+  ShieldAlert, CheckCircle2, XCircle, Users, Calendar, CheckSquare, 
+  Edit3, CalendarDays, Book, LineChart, ShieldCheck, Heart, Moon, 
+  ClipboardList 
+} from 'lucide-react';
+import { cn } from '../lib/utils';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+export function DashboardWalas() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [selectedDate] = useState(new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+
+  const menuItems = [
+    { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
+    { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
+    { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
+    { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
+    { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
+    { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
+    { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
+    { to: '/laporan', icon: ClipboardList, label: 'Cetak Laporan' },
+    { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi' },
+    { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap' },
+    { to: '/sholat-zuhur', icon: Moon, label: 'Sholat Zuhur' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800">Dashboard Wali Kelas</h1>
+          <p className="text-slate-500 mt-1 text-sm">Kelas Binaan: <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{user?.className}</span></p>
+        </div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+          {selectedDate}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:hidden">
+        {menuItems.map((item, index) => (
+          <button 
+            key={index}
+            onClick={() => navigate(item.to)}
+            className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center gap-3 hover:border-emerald-500 hover:shadow-md transition-all group"
+          >
+            <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+              <item.icon className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold text-slate-600 text-center uppercase tracking-wider group-hover:text-emerald-700">
+              {item.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex justify-between">
+            Kehadiran Hari Ini
+            <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">Sangat Baik</span>
+          </div>
+          <div className="flex items-end mt-2">
+            <span className="text-3xl font-black text-slate-800">98%</span>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex justify-between">
+            Pelanggaran (Minggu ini)
+            <div className="w-5 h-5 rounded flex items-center justify-center bg-red-50">
+              <ShieldAlert className="w-3 h-3 text-red-600" />
+            </div>
+          </div>
+          <div className="flex items-end mt-2">
+            <span className="text-3xl font-black text-slate-800">02</span>
+          </div>
+        </div>
+      </div>
+
+      
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-4 bg-emerald-500 rounded"></span>
+            <CardTitle>Trend Kehadiran Kelas (Bulan Ini)</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="h-64 w-full pt-4">
+          <ResponsiveContainer width="100%" height={256}>
+            <AreaChart data={[
+              { name: 'Mg 1', Hadir: 95 },
+              { name: 'Mg 2', Hadir: 98 },
+              { name: 'Mg 3', Hadir: 96 },
+              { name: 'Mg 4', Hadir: 99 },
+            ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} domain={[90, 100]} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <Tooltip />
+              <Area type="monotone" dataKey="Hadir" stroke="#10b981" fillOpacity={1} fill="url(#colorHadir)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-4 bg-emerald-500 rounded"></span>
+            <CardTitle>Status Pemantauan Pagi</CardTitle>
+          </div>
+          <Button size="sm" onClick={() => navigate('/pemantauan')}>INPUT PEMANTAUAN</Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="text-[10px] text-slate-400 uppercase tracking-tighter border-b border-slate-100 bg-slate-50/50">
+                <tr>
+                  <th className="px-5 py-3">Siswa</th>
+                  <th className="px-5 py-3 text-center">Kebersihan (Piket)</th>
+                  <th className="px-5 py-3 text-center">Seragam</th>
+                  <th className="px-5 py-3 text-left">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {mockStudents.filter(s => s.className === user?.className).slice(0, 5).map((student, idx) => (
+                  <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-5 py-3 font-bold text-slate-800">
+                      {student.name}
+                      <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">NIS: {student.nis}</span>
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${idx % 2 === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {idx % 2 === 0 ? 'Piket' : 'Tidak Piket'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${idx !== 2 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {idx !== 2 ? 'Lengkap' : 'Tidak Lengkap'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-left text-xs text-slate-500 font-medium">
+                      {idx === 2 ? 'Tidak pakai dasi' : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl">
+             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-slate-600">
+                   <span className="font-bold text-slate-800">Motivasi Hari Ini:</span> "Menjaga kebersihan sebagian dari iman..."
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/pemantauan')} className="w-full sm:w-auto text-xs">
+                   Lihat Semua
+                </Button>
+             </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

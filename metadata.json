@@ -1,0 +1,6 @@
+{
+  "name": "Managemen MAS Al-Ihsan Pesantren IBS Riau",
+  "description": "Sistem Informasi Manajemen Sekolah/Madrasah Terintegrasi premium dan ringkas.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

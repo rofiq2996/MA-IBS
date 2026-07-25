@@ -1,0 +1,248 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { Heart, FileBarChart, Check } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/Button';
+import { mockStudents as globalStudents } from '../data/mock';
+
+const mockStudentsData = globalStudents.map(s => ({
+  id: s.id,
+  name: s.name,
+  className: s.className || s.grade
+}));
+
+export function DashboardGuruQuran() {
+  const { user } = useAuth();
+  
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Dashboard Guru Qur'an</h1>
+        <p className="text-slate-500 mt-1 text-sm">Selamat datang, {user?.name}.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-emerald-50 border-emerald-100">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                <Heart className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-800">Siswa Sholat Dhuha Hari Ini</p>
+                <p className="text-2xl font-black text-emerald-900 mt-1">128</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-blue-50 border-blue-100">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                <FileBarChart className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-blue-800">Persentase Kehadiran Mingguan</p>
+                <p className="text-2xl font-black text-blue-900 mt-1">85%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export function GuruQuranAbsensiDhuha() {
+  const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
+  const [selectedClass, setSelectedClass] = useState('X-IPA 1');
+
+  // We can use mockStudentsData or import mockStudents if needed. Let's just use mockStudentsData for now
+  const availableClasses = Array.from(new Set(mockStudentsData.map(s => s.className)));
+
+  const handleSetStatus = (id: string, status: string) => {
+    setAttendance(prev => ({ 
+      ...prev, 
+      [id]: { 
+        ...prev[id], 
+        status: prev[id]?.status === status ? '' : status 
+      } 
+    }));
+  };
+  
+  const handleSetKet = (id: string, ket: string) => {
+    setAttendance(prev => ({ ...prev, [id]: { ...prev[id], ket } }));
+  };
+
+  const handleSave = () => {
+    window.alert("Absensi Sholat Dhuha berhasil disimpan!");
+  };
+
+  const showStudents = selectedClass !== '';
+
+  return (
+    <div className="space-y-4">
+      {/* Top Bar */}
+      <Card className="border-slate-200 shadow-sm">
+        <CardContent className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Absensi Sholat Dhuha</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Masukkan data kehadiran sholat dhuha siswa</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="w-[150px]">
+              <CustomSelect
+                value={selectedClass}
+                onChange={setSelectedClass}
+                options={[
+                  { value: '', label: 'Pilih Kelas' },
+                  ...availableClasses.filter(Boolean).map(c => ({ value: String(c), label: String(c) }))
+                ]}
+              />
+            </div>
+            <button 
+              onClick={handleSave}
+              className="px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Simpan
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Content */}
+      <Card className="border-slate-200 shadow-sm overflow-visible">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase w-16 text-center">No</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Nama Siswa</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase text-center min-w-[240px]">Status Kehadiran</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {showStudents ? (
+                mockStudentsData.filter(s => s.className === selectedClass).map((s, i) => {
+                  const stat = attendance[s.id]?.status || '';
+                  const ket = attendance[s.id]?.ket || '';
+                  return (
+                    <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4 text-sm font-medium text-slate-500 text-center">{i + 1}</td>
+                      <td className="py-4 px-4 text-sm font-bold text-slate-800">{s.name}</td>
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {['Hadir', 'Izin', 'Sakit', 'Alpa', 'Cabut'].map(st => {
+                            let bgActive = '';
+                            let textActive = 'text-white';
+                            let bgInactive = '';
+                            let textInactive = '';
+                            let hoverBg = '';
+                            if (st === 'Hadir') { bgActive = 'bg-emerald-500'; bgInactive = 'bg-emerald-50'; textInactive = 'text-emerald-600'; hoverBg = 'hover:bg-emerald-100'; }
+                            if (st === 'Izin') { bgActive = 'bg-amber-500'; bgInactive = 'bg-amber-50'; textInactive = 'text-amber-600'; hoverBg = 'hover:bg-amber-100'; }
+                            if (st === 'Sakit') { bgActive = 'bg-blue-500'; bgInactive = 'bg-blue-50'; textInactive = 'text-blue-600'; hoverBg = 'hover:bg-blue-100'; }
+                            if (st === 'Alpa') { bgActive = 'bg-red-500'; bgInactive = 'bg-red-50'; textInactive = 'text-red-600'; hoverBg = 'hover:bg-red-100'; }
+                            if (st === 'Cabut') { bgActive = 'bg-purple-500'; bgInactive = 'bg-purple-50'; textInactive = 'text-purple-600'; hoverBg = 'hover:bg-purple-100'; }
+                            
+                            const stLabel = st === 'Hadir' ? 'H' : st === 'Izin' ? 'I' : st === 'Sakit' ? 'S' : st === 'Alpa' ? 'A' : 'C';
+
+                            return (
+                              <button
+                                key={st}
+                                onClick={() => handleSetStatus(s.id, st)}
+                                className={"w-8 h-8 flex items-center justify-center rounded-md border text-xs font-bold transition-colors " + (stat === st ? (bgActive + " " + textActive + " border-transparent shadow-sm") : (bgInactive + " " + textInactive + " " + hoverBg + " border-slate-200/60"))}
+                              >
+                                {stLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <input
+                          type="text"
+                          placeholder="Tambahkan keterangan..."
+                          value={ket}
+                          onChange={(e) => handleSetKet(s.id, e.target.value)}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-emerald-500 transition-colors"
+                        />
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-sm font-medium text-slate-500">
+                    Pilih kelas terlebih dahulu atau belum ada data siswa
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+export function GuruQuranLaporanDhuha() {
+  const [selectedSemester, setSelectedSemester] = React.useState('Ganjil 2026/2027');
+  const semesters = [
+    { value: 'Ganjil 2026/2027', label: 'Ganjil 2026/2027 (Aktif)' },
+    { value: 'Genap 2025/2026', label: 'Genap 2025/2026' },
+    { value: 'Ganjil 2025/2026', label: 'Ganjil 2025/2026' },
+    { value: 'Genap 2024/2025', label: 'Genap 2024/2025' },
+    { value: 'Ganjil 2024/2025', label: 'Ganjil 2024/2025' }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Laporan Sholat Dhuha</h1>
+        <p className="text-slate-500 mt-1 text-sm">Rekapitulasi kehadiran sholat dhuha siswa.</p>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tahun Ajaran / Semester</label>
+        <select
+          value={selectedSemester}
+          onChange={(e) => setSelectedSemester(e.target.value)}
+          className="w-full md:w-1/3 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+        >
+          {semesters.map((s, i) => (
+            <option key={i} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Laporan {selectedSemester}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+              <div>
+                <h4 className="font-bold text-slate-800">Kelas X-IPA 1</h4>
+                <p className="text-sm font-medium text-slate-500">Tingkat Kehadiran: 88%</p>
+              </div>
+              <Button variant="outline" size="sm">Unduh PDF</Button>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+              <div>
+                <h4 className="font-bold text-slate-800">Kelas XI-IPA 2</h4>
+                <p className="text-sm font-medium text-slate-500">Tingkat Kehadiran: 92%</p>
+              </div>
+              <Button variant="outline" size="sm">Unduh PDF</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
