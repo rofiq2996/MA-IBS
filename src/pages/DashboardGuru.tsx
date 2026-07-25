@@ -61,7 +61,7 @@ export function DashboardGuru() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center">
               <span className="w-1 h-4 bg-emerald-500 rounded mr-2"></span> 
