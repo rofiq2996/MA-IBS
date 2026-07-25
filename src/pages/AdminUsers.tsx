@@ -7,6 +7,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { UserAvatar } from '../components/ui/UserAvatar';
 import bcrypt from 'bcryptjs';
 import * as XLSX from 'xlsx';
+import { apiClient } from '../lib/apiClient';
 
 export function AdminUsers() {
   const [activeTab, setActiveTab] = useState<'guru_tendik' | 'ortu' | 'siswa'>('guru_tendik');
@@ -14,7 +15,7 @@ export function AdminUsers() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Loaded & persisted lists
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
 
   const [students] = useState(mockStudents);
 
@@ -77,10 +78,31 @@ export function AdminUsers() {
   // Validation / Feedback messages
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Synchronize state changes to localStorage
+  const fetchUsers = async () => {
+    try {
+      const data = await apiClient('/crud.php?table=users');
+      const mapped = data.map((u: any) => ({
+        id: String(u.id),
+        name: u.name,
+        username: u.username,
+        password: u.password,
+        role: u.role,
+        roles: [u.role],
+        avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`,
+        gender: u.gender,
+        className: u.class_name,
+        childId: u.child_id ? String(u.child_id) : undefined,
+      }));
+      setUsers(mapped);
+    } catch (e) {
+      console.error(e);
+      setFeedback({ type: 'error', message: 'Gagal memuat data pengguna dari database.' });
+    }
+  };
+
   useEffect(() => {
-    
-  }, [users]);
+    fetchUsers();
+  }, []);
 
   // Clear feedback automatically
   useEffect(() => {
@@ -284,11 +306,28 @@ export function AdminUsers() {
         });
 
         if (successCount > 0) {
-          const updatedList = [...users, ...newUsers];
-          setUsers(updatedList);
-          mockUsers.splice(0, mockUsers.length, ...updatedList);
-          
-          setFeedback({ type: 'success', message: `Berhasil mengimpor ${successCount} akun Guru & Tendik dari file Excel.` });
+          Promise.all(newUsers.map(async (u) => {
+             const payload = {
+                name: u.name,
+                username: u.username,
+                password: u.password, // already hashed by bcrypt in this script
+                role: u.role,
+                gender: u.gender || null,
+                class_name: u.className || null,
+                child_id: u.childId || null,
+                avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`,
+             };
+             await apiClient(`/crud.php?table=users`, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+             });
+          })).then(() => {
+             fetchUsers();
+             setFeedback({ type: 'success', message: `Berhasil mengimpor ${successCount} akun Guru & Tendik dari file Excel.` });
+          }).catch((err) => {
+             console.error(err);
+             setFeedback({ type: 'error', message: `Berhasil memproses excel namun gagal menyimpan ke database.` });
+          });
         } else {
           setFeedback({ type: 'error', message: 'Tidak ada data valid yang dapat diimpor dari file Excel.' });
         }
@@ -334,17 +373,20 @@ export function AdminUsers() {
     setIsModalOpen(true);
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (deleteConfirmId) {
-      const updated = users.filter(u => u.id !== deleteConfirmId);
-      setUsers(updated);
-      mockUsers.splice(0, mockUsers.length, ...updated);
+      try {
+        await apiClient(`/crud.php?table=users&id=${deleteConfirmId}`, { method: 'DELETE' });
+        setFeedback({ type: 'success', message: 'Data pengguna berhasil dihapus.' });
+        fetchUsers();
+      } catch (e) {
+        setFeedback({ type: 'error', message: 'Gagal menghapus pengguna.' });
+      }
       setDeleteConfirmId(null);
-      setFeedback({ type: 'success', message: 'Data pengguna berhasil dihapus.' });
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!userName.trim()) {
@@ -352,26 +394,16 @@ export function AdminUsers() {
       return;
     }
 
-    let childName = undefined;
-    if (userRoles.includes('ortu') && userChildId) {
-      const child = students.find((s: any) => s.id === userChildId);
-      if (child) childName = child.name;
-    }
-
     if (userRoles.length === 0) {
       setFeedback({ type: 'error', message: 'Minimal pilih satu peran pengguna.' });
       return;
     }
 
-    
     let generatedUsername = userUsername.trim();
     if (!editingId) {
       const nameParts = userName.trim().split(' ').filter(Boolean);
       generatedUsername = nameParts[0].toLowerCase();
-
-      // Check if user is staff (guru/pendidik)
       const isStaff = userRoles.some(r => r !== 'ortu' && r !== 'siswa');
-
       if (isStaff) {
         let currentUsername = generatedUsername;
         let counter = 1;
@@ -384,53 +416,48 @@ export function AdminUsers() {
       }
     }
     
-    // As requested: password default 12345
-    const hashedPassword = bcrypt.hashSync(userPassword.trim() || '12345', 10);
-  
+    const hashedPassword = userPassword.trim() ? bcrypt.hashSync(userPassword.trim(), 10) : '';
 
-    let updatedList: User[] = [];
-    if (editingId) {
-      // Edit Mode
-      updatedList = users.map(u => {
-        if (u.id === editingId) {
-          return {
-            ...u,
-            name: userName.trim(),
-            username: generatedUsername,
-            password: userPassword.trim() ? hashedPassword : u.password,
-            role: userRoles[0],
-            roles: userRoles,
-            gender: userGender || undefined,
-            className: userRoles.includes('walas') ? userClassName : undefined,
-            childId: userRoles.includes('ortu') ? userChildId : undefined,
-            childName: userRoles.includes('ortu') ? childName : undefined,
-            subjects: userRoles.some(r => ['guru', 'walas', 'guru_quran'].includes(r)) ? userSubjects : undefined,
-          };
-        }
-        return u;
-      });
-    } else {
-      // Add Mode
-      const newUser: User = {
-        id: String(Date.now()),
+    const payload: any = {
         name: userName.trim(),
         username: generatedUsername,
-        password: hashedPassword,
         role: userRoles[0],
-        roles: userRoles,
-        gender: userGender || undefined,
-        className: userRoles.includes('walas') ? userClassName : undefined,
-        childId: userRoles.includes('ortu') ? userChildId : undefined,
-        childName: userRoles.includes('ortu') ? childName : undefined,
+        gender: userGender || null,
+        class_name: userRoles.includes('walas') ? userClassName : null,
+        child_id: userRoles.includes('ortu') ? userChildId : null,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userName)}`,
-      };
-      updatedList = [...users, newUser];
+    };
+
+    if (editingId) {
+      if (hashedPassword) {
+         payload.password = hashedPassword;
+      }
+      try {
+        await apiClient(`/crud.php?table=users&id=${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        setFeedback({ type: 'success', message: 'Data pengguna berhasil diperbarui.' });
+      } catch (e) {
+         setFeedback({ type: 'error', message: 'Gagal memperbarui pengguna.' });
+         return;
+      }
+    } else {
+      payload.password = hashedPassword || bcrypt.hashSync('12345', 10);
+      try {
+        await apiClient(`/crud.php?table=users`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        setFeedback({ type: 'success', message: 'Data pengguna berhasil ditambahkan.' });
+      } catch (e) {
+         setFeedback({ type: 'error', message: 'Gagal menambahkan pengguna.' });
+         return;
+      }
     }
     
-    setUsers(updatedList);
-    mockUsers.splice(0, mockUsers.length, ...updatedList);
     setIsModalOpen(false);
-    setFeedback({ type: 'success', message: `Data pengguna berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}.` });
+    fetchUsers();
   };
 
   const filteredUsers = users.filter(u => {
