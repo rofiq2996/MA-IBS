@@ -1,9 +1,9 @@
 import { User } from '../types';
 
-export const API_URL = '/api';
+export const API_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('run.app') || window.location.protocol === 'file:' || window.location.protocol === 'capacitor:')) ? 'https://www.mmmaibs.com/api' : '/api';
 
 export const apiClient = async (endpoint: string, options: RequestInit = {}) => {
-  const url = endpoint === '/sync' ? `/api/sync.php` : `${API_URL}${endpoint}`;
+  const url = endpoint === '/sync' ? `${API_URL}/sync.php` : `${API_URL}${endpoint}`;
   console.log('Fetching API:', url);
   const defaultHeaders = { 'Content-Type': 'application/json' };
 
