@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FileText, Share2, Upload, Plus, Trash2, Link as LinkIcon, Download, QrCode } from 'lucide-react';
+import { FileText, Share2, Upload, Plus, Trash2, Link as LinkIcon, Download, X, CheckCircle2, Check } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useAuth } from '../context/AuthContext';
 
 interface Assignment {
   id: string;
   title: string;
+  description?: string;
   type: 'materi' | 'tugas';
   className: string;
   subject: string;
@@ -15,6 +16,15 @@ interface Assignment {
   link?: string;
   fileName?: string;
   createdAt: string;
+}
+
+interface Submission {
+  id: string;
+  studentName: string;
+  status: 'dinilai' | 'belum';
+  score?: number;
+  fileUrl?: string;
+  submittedAt: string;
 }
 
 export function LMSTugas() {
@@ -25,6 +35,7 @@ export function LMSTugas() {
     {
       id: '1',
       title: 'Materi Bab 1 - Logaritma Dasar',
+      description: 'Pelajari slide materi berikut sebelum pertemuan besok. Pastikan sudah memahami sifat-sifat dasar logaritma.',
       type: 'materi',
       className: 'X-IPA 1',
       subject: 'Matematika Peminatan',
@@ -35,6 +46,7 @@ export function LMSTugas() {
     {
       id: '2',
       title: 'Tugas Latihan 1.1',
+      description: 'Kerjakan soal latihan di halaman 15 nomor 1-5. Kumpulkan dalam bentuk PDF hasil pindaian / foto yang jelas.',
       type: 'tugas',
       className: 'X-IPA 1',
       subject: 'Matematika Peminatan',
@@ -43,10 +55,51 @@ export function LMSTugas() {
     }
   ]);
 
+  const [submissions, setSubmissions] = useState<Record<string, Submission[]>>({
+    '2': [
+      { id: 's1', studentName: 'Ahmad Fazil', status: 'belum', fileUrl: 'Tugas_Ahmad_Fazil.pdf', submittedAt: '2026-07-14 10:00' },
+      { id: 's2', studentName: 'Siti Aminah', status: 'dinilai', score: 95, fileUrl: 'Jawaban_Siti_Aminah.pdf', submittedAt: '2026-07-14 11:30' }
+    ]
+  });
+
   const [showModal, setShowModal] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [selectedQRLink, setSelectedQRLink] = useState('');
+  const [submitModalAssignment, setSubmitModalAssignment] = useState<Assignment | null>(null);
+  const [viewResultsAssignment, setViewResultsAssignment] = useState<Assignment | null>(null);
   const [form, setForm] = useState<Partial<Assignment>>({ type: 'tugas', className: 'X-IPA 1', subject: 'Matematika Peminatan' });
+  const [submitForm, setSubmitForm] = useState({ file: null as File | null, link: '' });
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const handleSubmitTugas = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submitForm.file && !submitForm.link) {
+      showToast('Mohon lampirkan file atau tautan tugas Anda!');
+      return;
+    }
+    
+    if (submitModalAssignment) {
+      const newSub: Submission = {
+        id: Date.now().toString(),
+        studentName: user?.name || 'Siswa',
+        status: 'belum',
+        fileUrl: submitForm.file ? submitForm.file.name : submitForm.link,
+        submittedAt: new Date().toLocaleString('id-ID')
+      };
+      
+      setSubmissions({
+        ...submissions,
+        [submitModalAssignment.id]: [...(submissions[submitModalAssignment.id] || []), newSub]
+      });
+      
+      showToast('Tugas berhasil dikumpulkan!');
+      setSubmitModalAssignment(null);
+      setSubmitForm({ file: null, link: '' });
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +109,7 @@ export function LMSTugas() {
       {
         id: Date.now().toString(),
         title: form.title,
+        description: form.description,
         type: form.type as 'materi' | 'tugas',
         className: form.className || 'X-IPA 1',
         subject: form.subject || 'Matematika Peminatan',
@@ -111,23 +165,23 @@ export function LMSTugas() {
                       <span className="text-[10px] text-slate-500 uppercase font-semibold">{item.className} • {item.subject}</span>
                     </div>
                     <h3 className="font-bold text-slate-800 text-base mb-1">{item.title}</h3>
+                    
+                    {item.description && (
+                      <p className="text-sm text-slate-600 mb-2 leading-relaxed">{item.description}</p>
+                    )}
+
                     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-medium">
                       <span>Dibuat: {item.createdAt}</span>
-                      {item.deadline && <span className="text-red-500">Tenggat: {item.deadline}</span>}
+                      {item.deadline && <span className="text-red-500 font-bold">Tenggat: {item.deadline}</span>}
                     </div>
                     
                     {/* Link & File info */}
                     {(item.link || item.fileName) && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {item.link && (
-                          <>
-                            <button onClick={() => handleCopyLink(item.link)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors">
-                              <LinkIcon className="w-3.5 h-3.5" /> Salin Tautan
-                            </button>
-                            <button onClick={() => { setSelectedQRLink(item.link!); setShowQRModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors">
-                              <QrCode className="w-3.5 h-3.5" /> Barcode
-                            </button>
-                          </>
+                          <button onClick={() => handleCopyLink(item.link)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors">
+                            <LinkIcon className="w-3.5 h-3.5" /> Salin Tautan
+                          </button>
                         )}
                         {item.fileName && (
                           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg text-xs font-bold">
@@ -142,12 +196,17 @@ export function LMSTugas() {
                 
                 <div className="flex items-center gap-2 sm:self-center self-start mt-2 sm:mt-0 shrink-0">
                   {item.type === 'tugas' && (
-                    <Button variant="outline" size="sm" className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => isSiswa ? setSubmitModalAssignment(item) : setViewResultsAssignment(item)}
+                      className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-bold"
+                    >
                       {isSiswa ? 'KUMPUL TUGAS' : 'LIHAT HASIL'}
                     </Button>
                   )}
                   {!isSiswa && (
-                    <button onClick={() => handleDelete(item.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button onClick={() => handleDelete(item.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Tugas/Materi">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -273,6 +332,17 @@ export function LMSTugas() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Deskripsi / Instruksi Tambahan</label>
+                <textarea 
+                  value={form.description || ''}
+                  onChange={(e) => setForm({...form, description: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                  placeholder="Instruksi tambahan untuk siswa..."
+                  rows={3}
+                />
+              </div>
+
               {form.type === 'tugas' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Batas Waktu (Deadline)</label>
@@ -293,27 +363,126 @@ export function LMSTugas() {
         </div>
       )}
 
-      {showQRModal && (
+      {/* Submit Assignment Modal (Student) */}
+      {submitModalAssignment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-visible text-center">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-800">Barcode Tugas/Materi</h2>
-              <button onClick={() => setShowQRModal(false)} className="text-slate-400 hover:text-slate-600">
-                ✕
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Kumpulkan Tugas</h2>
+                <p className="text-xs text-slate-500 mt-1">{submitModalAssignment.title}</p>
+              </div>
+              <button onClick={() => setSubmitModalAssignment(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-8 flex flex-col items-center justify-center">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm inline-block">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedQRLink)}`} 
-                  alt="QR Code" 
-                  className="w-48 h-48"
+            
+            <form onSubmit={handleSubmitTugas} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Upload File (PDF/Doc/Zip)</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="file" 
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setSubmitForm({...submitForm, file: e.target.files[0]});
+                      }
+                    }}
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                  />
+                </div>
+              </div>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white px-2 text-slate-500 font-bold uppercase">ATAU</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Lampirkan Tautan (Link Drive/Lainnya)</label>
+                <input 
+                  type="url" 
+                  value={submitForm.link}
+                  onChange={(e) => setSubmitForm({...submitForm, link: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                  placeholder="https://..."
                 />
               </div>
-              <p className="mt-4 text-xs font-medium text-slate-500 break-all px-4">
-                {selectedQRLink}
-              </p>
-              <Button onClick={() => setShowQRModal(false)} className="w-full mt-6 py-2.5">Tutup</Button>
+
+              <div className="pt-4 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setSubmitModalAssignment(null)} className="font-bold">Batal</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 font-bold">Kumpul Sekarang</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Results Modal (Teacher) */}
+      {viewResultsAssignment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Hasil Pengumpulan Tugas</h2>
+                <p className="text-xs text-slate-500 mt-1">{viewResultsAssignment.title}</p>
+              </div>
+              <button onClick={() => setViewResultsAssignment(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-y-auto flex-1">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase text-xs font-bold">
+                  <tr>
+                    <th className="px-5 py-3">Nama Siswa</th>
+                    <th className="px-5 py-3">Waktu Kumpul</th>
+                    <th className="px-5 py-3">Lampiran</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Nilai</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {submissions[viewResultsAssignment.id]?.length > 0 ? (
+                    submissions[viewResultsAssignment.id].map(sub => (
+                      <tr key={sub.id} className="hover:bg-slate-50">
+                        <td className="px-5 py-3 font-bold text-slate-800">{sub.studentName}</td>
+                        <td className="px-5 py-3 text-slate-500">{sub.submittedAt}</td>
+                        <td className="px-5 py-3">
+                          {sub.fileUrl && (
+                            <a href="#" className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold hover:underline" onClick={(e) => e.preventDefault()}>
+                              <FileText className="w-3.5 h-3.5" /> Buka
+                            </a>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${sub.status === 'dinilai' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                            {sub.status === 'dinilai' ? 'Dinilai' : 'Belum Dinilai'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 font-bold text-slate-800">
+                          {sub.score || '-'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-8 text-center text-slate-500 font-medium">
+                        Belum ada siswa yang mengumpulkan tugas ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <Button variant="outline" onClick={() => setViewResultsAssignment(null)} className="font-bold">Tutup</Button>
             </div>
           </div>
         </div>

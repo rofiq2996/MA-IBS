@@ -458,18 +458,14 @@ export function AdminSettings() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-emerald-600" />
-                <CardTitle>Detail Lisensi & Sistem</CardTitle>
+                <CardTitle>Detail Sistem</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="divide-y divide-slate-100 text-xs">
-                <div className="py-2.5 flex justify-between">
-                  <span className="font-bold text-slate-400 uppercase tracking-wider">Status Lisensi</span>
-                  <span className="font-extrabold text-emerald-600 uppercase">Aktif / Pro</span>
-                </div>
-                <div className="py-2.5 flex justify-between">
-                  <span className="font-bold text-slate-400 uppercase tracking-wider">Masa Berlaku</span>
-                  <span className="font-semibold text-slate-600">31 Des 2028</span>
+                <div className="py-2.5 flex justify-between items-center gap-2 overflow-hidden">
+                  <span className="font-bold text-slate-400 uppercase tracking-wider shrink-0">Pengembang</span>
+                  <span className="font-extrabold text-emerald-600 text-right truncate text-[10px] sm:text-xs">PT. Al-Fatih Digital Learning</span>
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="font-bold text-slate-400 uppercase tracking-wider">Versi Aplikasi</span>

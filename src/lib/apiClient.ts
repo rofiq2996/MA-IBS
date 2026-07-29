@@ -1,20 +1,10 @@
 import { User } from '../types';
 
-const getApiUrl = () => {
-  let url = (import.meta as any).env?.VITE_API_URL || '/api';
-  if (url && url !== '/api') {
-    url = url.trim().replace(/\/$/, '');
-    if (!url.endsWith('/api')) {
-      url = `${url}/api`;
-    }
-  }
-  return url;
-};
-
-export const API_URL = getApiUrl();
+export const API_URL = '/api';
 
 export const apiClient = async (endpoint: string, options: RequestInit = {}) => {
   const url = endpoint === '/sync' ? `/api/sync.php` : `${API_URL}${endpoint}`;
+  console.log('Fetching API:', url);
   const defaultHeaders = { 'Content-Type': 'application/json' };
 
   try {

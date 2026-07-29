@@ -29,12 +29,13 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'SIM Madrasah Terintegrasi MAS Al-Ihsan',
-          short_name: 'Al-Ihsan',
-          description: 'Sistem Informasi Manajemen Sekolah Terintegrasi MAS Al-Ihsan IBS Riau',
+          name: 'SIKAT MA AL-IHSAN',
+          short_name: 'SIKAT Al-Ihsan',
+          description: 'SIKAT (Sistem Informasi Akademik Terpadu) MAS Al-Ihsan IBS Riau',
           theme_color: '#065f46',
           background_color: '#ffffff',
           display: 'standalone',
+          scope: '/',
           start_url: '/',
           orientation: 'portrait',
           icons: [
@@ -45,16 +46,22 @@ export default defineConfig(() => {
               purpose: "any"
             },
             {
+              src: "/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable"
+            },
+            {
               src: "/icon-512.png",
               sizes: "512x512",
               type: "image/png",
               purpose: "any"
             },
             {
-              src: "/icon.png",
+              src: "/icon-512.png",
               sizes: "512x512",
               type: "image/png",
-              purpose: "any maskable"
+              purpose: "maskable"
             }
           ]
         },

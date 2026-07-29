@@ -20,6 +20,36 @@ export function MobileDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState('');
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(true);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        setLoadingSchedules(true);
+        const data = await apiClient('/crud.php?table=schedules');
+        if (Array.isArray(data)) {
+          const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+          const today = days[new Date().getDay()];
+          const mySchedules = data.filter((d: any) => String(d.teacher_id) === String(user?.id) && d.day === today);
+          
+          const mapped = mySchedules.map((d: any) => ({
+            time: (d.start_time?.substring(0,5) || '') + ' - ' + (d.end_time?.substring(0,5) || ''),
+            class: d.class_name,
+            subject: d.subject_name
+          }));
+          
+          mapped.sort((a, b) => a.time.localeCompare(b.time));
+          setSchedules(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch schedules', err);
+      } finally {
+        setLoadingSchedules(false);
+      }
+    };
+    if (user?.id) fetchSchedules();
+  }, [user]);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -35,6 +65,41 @@ export function MobileDashboard() {
   }, []);
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const roleMenuRef = useRef<HTMLDivElement>(null);
+  
+  const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
+  const termMenuRef = useRef<HTMLDivElement>(null);
+  const [terms, setTerms] = useState<any[]>([]);
+  const [selectedTermId, setSelectedTermId] = useState<string>('');
+
+  useEffect(() => {
+    let parsedTerms = [];
+    const stored = localStorage.getItem('mockAcademicTerms');
+    
+    if (stored) {
+      try {
+        parsedTerms = JSON.parse(stored);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    if (parsedTerms.length === 0) {
+      parsedTerms = [];
+    }
+    
+    setTerms(parsedTerms);
+    
+    const savedSelected = localStorage.getItem('selectedAcademicTermId');
+    if (savedSelected && parsedTerms.find(t => t.id === savedSelected)) {
+      setSelectedTermId(savedSelected);
+    } else {
+      const activeTerm = parsedTerms.find(t => t.isActive);
+      if (activeTerm) setSelectedTermId(activeTerm.id);
+      else if (parsedTerms.length > 0) setSelectedTermId(parsedTerms[0].id);
+    }
+  }, []);
+
+  const activeTerm = terms.find(t => t.id === selectedTermId);
 
   // Handle hardware back button for "Menu Lainnya" bottom sheet
   useEffect(() => {
@@ -59,6 +124,9 @@ export function MobileDashboard() {
     function handleClickOutside(event: MouseEvent) {
       if (roleMenuRef.current && !roleMenuRef.current.contains(event.target as Node)) {
         setIsRoleMenuOpen(false);
+      }
+      if (termMenuRef.current && !termMenuRef.current.contains(event.target as Node)) {
+        setIsTermMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -102,15 +170,16 @@ export function MobileDashboard() {
           { to: '/input-nilai', icon: Edit3, label: 'Input Nilai', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Input nilai ujian & tugas' },
           { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar', color: 'text-violet-600', bg: 'bg-violet-50', desc: 'Catatan materi pelajaran' },
           { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'RPP, silabus & modul' },
-          { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas online siswa' },
           { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Statistik performa siswa' },
           { to: '/laporan', icon: FileText, label: 'Laporan', color: 'text-rose-600', bg: 'bg-rose-50', desc: 'Laporan capaian belajar' },
-          { to: '/sholat-duha', icon: Sun, label: 'Sholat Duha', color: 'text-yellow-600', bg: 'bg-yellow-50', desc: 'Presensi ibadah pagi' },
           { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur', color: 'text-slate-600', bg: 'bg-slate-50', desc: 'Presensi jamaah zuhur' },
           { to: '/leave', icon: ClipboardList, label: 'Form Perizinan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Pengajuan izin staf' },
           { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Profil & keamanan' },
         ];
-        if (teachesXII) guruLinks.splice(7, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Ujian berbasis komputer' });
+        if (teachesXII) {
+          guruLinks.splice(7, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas online siswa' });
+          guruLinks.splice(8, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Ujian berbasis komputer' });
+        }
         return guruLinks;
       case 'walas':
         const walasLinks = [
@@ -119,7 +188,6 @@ export function MobileDashboard() {
           { to: '/absensi', icon: CheckSquare, label: 'Absensi', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran siswa harian' },
           { to: '/input-nilai', icon: Edit3, label: 'Input Nilai', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Input nilai kelas binaan' },
           { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar', color: 'text-violet-600', bg: 'bg-violet-50', desc: 'Catatan materi kelas' },
-          { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas kelas binaan' },
           { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Evaluasi & progres belajar' },
           { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi', color: 'text-red-600', bg: 'bg-red-50', desc: 'Kontrol ketertiban pagi' },
           { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Penilaian akhlak siswa' },
@@ -130,13 +198,15 @@ export function MobileDashboard() {
           { to: '/leave', icon: ClipboardList, label: 'Form Perizinan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Pengajuan izin walas' },
           { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Keamanan akun' },
         ];
-        if (teachesXII) walasLinks.splice(6, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Kelola ujian CBT kelas' });
+        if (teachesXII) {
+          walasLinks.splice(7, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas kelas binaan' });
+          walasLinks.splice(8, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Kelola ujian CBT kelas' });
+        }
         return walasLinks;
       case 'admin':
         return [
           { to: '/users', icon: Users, label: 'Pengguna', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Kelola akun sekolah' },
-          { to: '/students', icon: BookOpen, label: 'Siswa', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Data induk kesiswaan' },
-          { to: '/academic', icon: Library, label: 'Kelas', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Manajemen kelas & rombel' },
+          { to: '/students', icon: BookOpen, label: 'Siswa & Kelas', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Data induk kesiswaan' },
           { to: '/admin/subjects', icon: BookOpenCheck, label: 'Mata Pelajaran', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Daftar kurikulum pelajaran' },
           { to: '/admin/plotting', icon: UserCheck, label: 'Plotting Pengajar', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Tugas mengajar guru' },
           { to: '/admin/terms', icon: Calendar, label: 'Tahun Ajaran', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Semester & kalender aktif' },
@@ -173,12 +243,16 @@ export function MobileDashboard() {
           { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran sholat zuhur' },
         ];
       case 'siswa':
-        return [
-          { to: '/lms-tugas', icon: ClipboardList, label: 'Materi & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Materi ajar & latihan' },
+        const siswaLinks = [];
+        if (teachesXII) {
+          siswaLinks.push({ to: '/lms-tugas', icon: ClipboardList, label: 'Materi & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Materi ajar & latihan' });
+        }
+        siswaLinks.push(
           { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Masuk ruang ujian' },
           { to: '/siswa-nilai', icon: Edit3, label: 'Nilai & Rapor', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Laporan raport berkala' },
-          { to: '/siswa/hafalan', icon: Book, label: 'Hafalan & Tahfizku', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Progres setoran hafalan' },
-        ];
+          { to: '/siswa/hafalan', icon: Book, label: 'Hafalan & Tahfizku', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Progres setoran hafalan' }
+        );
+        return siswaLinks;
       case 'wakakurikulum':
         return [
           { to: '/kurikulum/jadwal', icon: CalendarDays, label: 'Jadwal Pelajaran', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Atur jadwal kelas' },
@@ -217,6 +291,7 @@ export function MobileDashboard() {
       case 'guru_quran':
         const quranLinks = [
           { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Kelompok ngaji & biodata' },
+          { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Modul ajar' },
           { to: '/guru-quran/hafalan', icon: Book, label: 'Input Hafalan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Catat setoran tahfiz' },
           { to: '/guru-quran/dhuha', icon: Heart, label: 'Absensi Dhuha', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Input sholat dhuha siswa' },
           { to: '/guru-quran/laporan', icon: FileBarChart, label: 'Laporan Quran', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Rekapan dhuha & tahfiz' },
@@ -236,37 +311,7 @@ export function MobileDashboard() {
   const gridItems = allMenus.slice(0, 8);
   const remainingItems = allMenus.slice(8);
 
-  const getStats = () => {
-    switch (user?.role) {
-      case 'guru':
-        return [
-          { label: 'Jadwal Hari Ini', value: '3 Sesi', desc: 'Sesi berikutnya: 09:15', metric: '60% selesai', progress: 60, theme: 'indigo' },
-          { label: 'Kehadiran Kelas', value: '96%', desc: 'Sangat Baik', metric: '30/32 Siswa', progress: 96, theme: 'emerald' }
-        ];
-      case 'walas':
-        return [
-          { label: 'Kelas Binaan', value: user.className || 'XII-IPA 1', desc: 'Total 32 Siswa', metric: 'Aktif', progress: 100, theme: 'emerald' },
-          { label: 'Pemantauan Pagi', value: 'Selesai', desc: 'Sudah disubmit', metric: 'Sukses', progress: 100, theme: 'indigo' }
-        ];
-      case 'admin':
-        return [
-          { label: 'Total Pengguna', value: '542', desc: 'Siswa, Guru & Staf', metric: 'Aktif', progress: 88, theme: 'sky' },
-          { label: 'Status Sistem', value: 'Optimal', desc: 'Semua modul online', metric: '100% Online', progress: 100, theme: 'emerald' }
-        ];
-      case 'ortu':
-        return [
-          { label: 'Anak Terdaftar', value: 'Ahmad Fauzi', desc: 'Kelas XII-IPA 1', metric: 'Sehat', progress: 100, theme: 'indigo' },
-          { label: 'Kehadiran Anak', value: '98%', desc: 'Hadir semester ini', metric: 'Sangat Rajin', progress: 98, theme: 'emerald' }
-        ];
-      default:
-        return [
-          { label: 'Semester', value: 'Ganjil', desc: 'TA 2026/2027', metric: 'Aktif', progress: 50, theme: 'amber' },
-          { label: 'Akun Aktif', value: 'Madrasah', desc: 'Sistem Terpadu', metric: 'Terverifikasi', progress: 100, theme: 'emerald' }
-        ];
-    }
-  };
-
-  const stats = getStats();
+  
 
   // Filter remaining items based on search query in full menu bottom sheet
   const filteredRemaining = remainingItems.filter(item => 
@@ -313,25 +358,73 @@ export function MobileDashboard() {
               <p className="text-[9px] sm:text-[10px] text-emerald-200/90 font-bold uppercase tracking-wider leading-none">
                 {currentTime || '--:-- WIB'}
               </p>
-              <h2 className="text-xs sm:text-sm font-black text-white leading-snug mt-0.5 truncate">{user?.name}</h2>
+              <h2 className="text-xs sm:text-sm font-black text-white leading-snug mt-0.5 truncate tracking-wide">{user?.name}</h2>
               
-              {/* SEMESTER INFO */}
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="inline-block whitespace-nowrap px-1.5 py-0.5 bg-white text-emerald-800 text-[8px] rounded-sm font-black uppercase tracking-widest shadow-sm">
-                  GANJIL
-                </span>
-                <span className="text-[9px] text-emerald-100/90 font-bold uppercase tracking-widest whitespace-nowrap">TA 2026/2027</span>
+              {/* SEMESTER DROPDOWN (Replacing static text) */}
+              <div className="mt-1.5 flex items-center">
+                {activeTerm && (
+                  <div className="relative inline-block" ref={termMenuRef}>
+                    <button
+                      onClick={() => setIsTermMenuOpen(!isTermMenuOpen)}
+                      className="flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 group"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block whitespace-nowrap px-1.5 py-0.5 bg-white text-emerald-800 text-[8px] rounded-sm font-black uppercase tracking-widest shadow-sm group-hover:bg-emerald-50">
+                          {activeTerm.semester}
+                        </span>
+                        <span className="text-[9px] text-emerald-100/90 font-bold uppercase tracking-widest whitespace-nowrap group-hover:text-white">
+                          TA {activeTerm.year}
+                        </span>
+                      </div>
+                      <ChevronDown className={`w-3 h-3 shrink-0 text-emerald-100/90 group-hover:text-white transition-transform duration-200 ${isTermMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {isTermMenuOpen && terms.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
+                          className="absolute left-0 mt-1.5 w-44 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-[80] origin-top-left overflow-hidden"
+                        >
+                          {terms.map((term) => {
+                            const isSelected = term.id === selectedTermId;
+                            return (
+                              <button
+                                key={term.id}
+                                onClick={() => {
+                                  setSelectedTermId(term.id);
+                                  localStorage.setItem('selectedAcademicTermId', term.id);
+                                  setIsTermMenuOpen(false);
+                                  window.location.reload();
+                                }}
+                                className={`w-full text-left px-3 py-2 text-[10px] font-bold transition-colors flex items-center justify-between ${
+                                  isSelected 
+                                    ? 'bg-emerald-50 text-emerald-700 font-extrabold' 
+                                    : 'text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                <span>SMT {term.semester} {term.year}</span>
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end shrink-0 pl-1">
+          <div className="flex flex-col items-end shrink-0 pl-1 gap-1">
             {/* ROLE BADGE & SWITCHER */}
             {user?.roles && user.roles.length > 1 ? (
               <div className="relative inline-block mt-1" ref={roleMenuRef}>
                 <button
                   onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-                  className="flex items-center justify-between gap-1 bg-white/10 hover:bg-white/20 border border-white/25 text-[9px] sm:text-[10px] text-white font-black capitalize py-1 px-2 rounded-md transition-all shadow-sm cursor-pointer select-none active:scale-95 max-w-[100px]"
+                  className="flex items-center justify-between gap-1 bg-emerald-600/50 hover:bg-emerald-600/70 border border-white/20 text-[9px] sm:text-[10px] text-white font-black capitalize py-1 px-2.5 rounded-lg transition-all shadow-sm cursor-pointer select-none active:scale-95 min-w-[90px]"
                 >
                   <span className="truncate">
                     {user.role === 'walas' ? 'Wali Kelas' : user.role === 'pustaka' ? 'Pustakawan' : user.role === 'ortu' ? 'Orang Tua' : user.role.replace('_', ' ')}
@@ -348,7 +441,7 @@ export function MobileDashboard() {
                       transition={{ duration: 0.15, ease: "easeOut" }}
                       className="absolute right-0 mt-1.5 w-40 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-[80] origin-top-right overflow-hidden"
                     >
-                      {user.roles.map((r) => {
+                      {(Array.isArray(user.roles) ? user.roles : [user.role]).map((r) => {
                         const isActive = user.role === r;
                         const label = r === 'walas' ? 'Wali Kelas' : r === 'pustaka' ? 'Pustakawan' : r === 'ortu' ? 'Orang Tua' : r.replace('_', ' ');
                         return (
@@ -375,7 +468,7 @@ export function MobileDashboard() {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 mt-1 bg-white/10 px-2 py-1 rounded-md border border-white/20">
+              <div className="flex items-center gap-1.5 mt-1 bg-emerald-600/50 px-2.5 py-1 rounded-lg border border-white/20 shadow-sm">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-100"></span>
@@ -407,96 +500,29 @@ export function MobileDashboard() {
             </div>
 
             <div className="space-y-2">
-              {[
-                { class: 'X MIPA 1', subject: 'Matematika', time: '07:30 - 09:00', isActive: false },
-                { class: 'XII IPS 2', subject: 'Matematika', time: '09:15 - 10:45', isActive: true },
-                { class: 'XI MIPA 3', subject: 'Matematika', time: '11:00 - 12:30', isActive: false },
-              ].map((schedule, i) => {
-                const isCurrentlyActive = (() => {
-                  try {
-                    const [startStr, endStr] = schedule.time.split(' - ');
-                    const [startHour, startMinute] = startStr.split(':').map(Number);
-                    const [endHour, endMinute] = endStr.split(':').map(Number);
-                    
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const currentMinute = now.getMinutes();
-                    
-                    const currentTimeMinutes = currentHour * 60 + currentMinute;
-                    const startTimeMinutes = startHour * 60 + startMinute;
-                    const endTimeMinutes = endHour * 60 + endMinute;
-                    
-                    return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
-                  } catch (e) {
-                    return false;
-                  }
-                })();
-
-                const isButtonsActive = (() => {
-                  try {
-                    const [startStr] = schedule.time.split(' - ');
-                    const [startHour, startMinute] = startStr.split(':').map(Number);
-                    
-                    const now = new Date();
-                    const currentHour = now.getHours();
-                    const currentMinute = now.getMinutes();
-                    
-                    const currentTimeMinutes = currentHour * 60 + currentMinute;
-                    const startTimeMinutes = startHour * 60 + startMinute;
-                    
-                    // Batas waktu akhir dari admin (misal pukul 17:00)
-                    const cutoffTimeMinutes = 17 * 60; // 17:00
-                    
-                    return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= cutoffTimeMinutes;
-                  } catch (e) {
-                    return false;
-                  }
-                })();
-
-                return (
-                  <div key={i} className={`p-2.5 rounded-xl border flex gap-2.5 items-center justify-between transition-colors ${isCurrentlyActive ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
-                    <div className="flex gap-2.5 items-center flex-1 min-w-0">
-                      <div className={`p-1.5 rounded-md shrink-0 ${isCurrentlyActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
-                        <Clock className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[10.5px] font-extrabold truncate ${isCurrentlyActive ? 'text-emerald-900' : 'text-slate-800'}`}>
-                          {schedule.class} • {schedule.subject}
-                        </p>
-                        <p className={`text-[9px] mt-0.5 font-bold ${isCurrentlyActive ? 'text-emerald-600' : 'text-slate-500'}`}>
-                          {schedule.time}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5 shrink-0">
-                      <button 
-                        disabled={!isButtonsActive}
-                        onClick={() => navigate('/absensi')}
-                        className={`w-8 h-8 flex items-center justify-center text-[11px] font-black rounded-lg transition-all ${
-                          isButtonsActive 
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-95' 
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
-                        title="Absen (A)"
-                      >
-                        A
-                      </button>
-                      <button 
-                        disabled={!isButtonsActive}
-                        onClick={() => navigate('/jurnal-mengajar')}
-                        className={`w-8 h-8 flex items-center justify-center text-[11px] font-black rounded-lg transition-all ${
-                          isButtonsActive 
-                            ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95' 
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
-                        title="Jurnal Ajar (J)"
-                      >
-                        J
-                      </button>
-                    </div>
+              
+              {loadingSchedules ? (
+                <div className="flex flex-col items-center justify-center py-6 px-4 bg-slate-50 border border-slate-100 border-dashed rounded-xl text-center">
+                  <p className="text-[10px] font-bold text-slate-500">Memuat jadwal...</p>
+                </div>
+              ) : schedules.length > 0 ? schedules.map((schedule, i) => (
+                <div key={i} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">{schedule.time}</span>
+                    <span className="text-[10px] text-slate-500">{schedule.class}</span>
                   </div>
-                );
-              })}
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs font-semibold text-emerald-700">{schedule.subject}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="flex flex-col items-center justify-center py-6 px-4 bg-slate-50 border border-slate-100 border-dashed rounded-xl text-center">
+                  <Calendar className="w-6 h-6 text-slate-300 mb-2" />
+                  <p className="text-[10px] font-bold text-slate-500">Tidak ada jadwal</p>
+                  <p className="text-[9px] font-medium text-slate-400 mt-0.5">Hari ini tidak ada jadwal mengajar</p>
+                </div>
+              )}
+
             </div>
           </div>
         )}
@@ -533,7 +559,7 @@ export function MobileDashboard() {
             ))}
 
             {/* 9th SLOT: SMART LAINNYA WIDGET */}
-            {remainingItems.length > 0 ? (
+            {remainingItems.length > 0 && (
               <motion.button 
                 whileTap={{ scale: 0.9 }}
                 onClick={() => {
@@ -549,15 +575,6 @@ export function MobileDashboard() {
                   Menu Lainnya
                 </span>
               </motion.button>
-            ) : (
-              <div className="flex flex-col items-center justify-start gap-1.5 opacity-50">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 border-dashed flex items-center justify-center">
-                  <Info className="w-5 h-5 text-slate-400" />
-                </div>
-                <span className="text-[9.5px] font-bold text-slate-400 text-center leading-tight">
-                  Selesai
-                </span>
-              </div>
             )}
           </div>
         </div>

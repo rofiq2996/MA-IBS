@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Plus, Edit2, Trash2, X, Check, Search, FileUp, Download, Clock, BookOpen, User } from 'lucide-react';
 import { mockClasses, mockUsers } from '../data/mock';
 import { dbClient } from '../lib/dbClient';
+import { apiClient } from '../lib/apiClient';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import * as XLSX from 'xlsx';
 
@@ -16,14 +17,36 @@ export function InputJadwal() {
     });
   }, []);
 
-  const [schedules, setSchedules] = useState<any[]>(() => {
-    const saved = localStorage.getItem('app_schedules');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient('/crud.php?table=schedules');
+      if (Array.isArray(data)) {
+        const mapped = data.map((d: any) => ({
+          id: d.id,
+          rombel: d.class_name,
+          hari: d.day,
+          jamMulai: d.start_time?.substring(0,5),
+          jamSelesai: d.end_time?.substring(0,5),
+          mapel: d.subject_name,
+          guruId: String(d.teacher_id),
+          guruName: mockUsers.find(u => String(u.id) === String(d.teacher_id))?.name || 'Guru'
+        }));
+        setSchedules(mapped);
+      }
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('app_schedules', JSON.stringify(schedules));
-  }, [schedules]);
+    fetchSchedules();
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,8 +91,24 @@ export function InputJadwal() {
         }));
 
         if (newSchedules.length > 0) {
-          setSchedules(prev => [...prev, ...newSchedules]);
-          window.alert(`Berhasil mengimpor ${newSchedules.length} jadwal`);
+          Promise.all(newSchedules.map((s: any) => apiClient('/crud.php?table=schedules', {
+            method: 'POST',
+            body: JSON.stringify({
+              class_name: s.rombel,
+              day: s.hari,
+              start_time: s.jamMulai,
+              end_time: s.jamSelesai,
+              subject_name: s.mapel,
+              teacher_id: s.guruId
+            })
+          }))).then(() => {
+            fetchSchedules();
+            window.alert(`Berhasil mengimpor ${newSchedules.length} jadwal`);
+          }).catch(err => {
+            console.error(err);
+            window.alert('Terjadi kesalahan saat menyimpan sebagian jadwal');
+            fetchSchedules();
+          });
         }
       } catch (error) {
         console.error(error);

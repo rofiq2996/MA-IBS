@@ -1,4 +1,6 @@
 import React from 'react';
+import { TermSwitcher } from '../components/ui/TermSwitcher';
+// from 'react';
 import { UserAnnouncements } from '../components/ui/UserAnnouncements';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -6,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Users, BookOpen, Undo2, PlusCircle, AlertTriangle, 
   BookOpenCheck, Laptop, Star, Clipboard, Library, 
-  HeartHandshake, FileBarChart, Lightbulb 
+  HeartHandshake, FileBarChart, Lightbulb, GraduationCap, Calendar 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,13 +36,34 @@ export function DashboardPustaka() {
     { label: 'Pelaporan', desc: 'Rekap mingguan & bulanan', icon: FileBarChart, to: '/pelaporan' },
   ];
 
+  const todayDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">Pusat Perpustakaan</h1>
-          <p className="text-slate-500 mt-1 text-sm">Dashboard indikator dan operasional bulanan.</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 md:p-8 text-white shadow-md">
+        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-12">
+          <GraduationCap className="w-80 h-80 text-white" />
         </div>
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-xs rounded-full text-xs font-semibold text-emerald-300">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{todayDate}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+            Selamat Datang, {user?.name || 'Pustakawan'}
+          </h1>
+          <p className="text-emerald-100/95 text-xs md:text-sm font-medium leading-relaxed max-w-2xl">
+            Sistem Informasi Aktivitas Terintegrasi (SIKAT) MA Al-Ihsan Boarding School Riau. Portal Perpustakaan untuk mengelola inventarisasi buku, sirkulasi peminjaman, and program peningkatan minat baca siswa.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-150/60 shadow-xs">
+        <span className="text-sm font-bold text-slate-700">Tahun Akademik:</span>
+        <TermSwitcher />
       </div>
       <UserAnnouncements />
 

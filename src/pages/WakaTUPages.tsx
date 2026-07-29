@@ -1,18 +1,42 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { CalendarDays, BookOpen, FileText, Users, Target, Activity, CreditCard, Database } from 'lucide-react';
+import { CalendarDays, BookOpen, FileText, Users, Target, Activity, CreditCard, Database, GraduationCap, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TermSwitcher } from '../components/ui/TermSwitcher';
 
 export function DashboardWakaKurikulum() {
   const { user } = useAuth();
   
+  const todayDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Dashboard Waka Kurikulum</h1>
-        <p className="text-slate-500 mt-1 text-sm">Selamat datang, {user?.name}.</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 md:p-8 text-white shadow-md">
+        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-12">
+          <GraduationCap className="w-80 h-80 text-white" />
+        </div>
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-xs rounded-full text-xs font-semibold text-emerald-300">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{todayDate}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+            Selamat Datang, {user?.name || 'Waka Kurikulum'}
+          </h1>
+          <p className="text-emerald-100/95 text-xs md:text-sm font-medium leading-relaxed max-w-2xl">
+            Sistem Informasi Aktivitas Terintegrasi (SIKAT) MA Al-Ihsan Boarding School Riau. Halaman Pusat Kendali Kurikulum untuk mengelola kalender akademik, pembagian jam mengajar, and pemantauan proses KBM.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-150/60 shadow-xs">
+        <span className="text-sm font-bold text-slate-700">Tahun Akademik:</span>
+        <TermSwitcher />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -75,12 +99,34 @@ export function DashboardWakaKurikulum() {
 
 export function DashboardWakaKesiswaan() {
   const { user } = useAuth();
-  
+  const todayDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Dashboard Waka Kesiswaan</h1>
-        <p className="text-slate-500 mt-1 text-sm">Selamat datang, {user?.name}.</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 md:p-8 text-white shadow-md">
+        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-12">
+          <GraduationCap className="w-80 h-80 text-white" />
+        </div>
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-xs rounded-full text-xs font-semibold text-emerald-300">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{todayDate}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+            Selamat Datang, {user?.name || 'Waka Kesiswaan'}
+          </h1>
+          <p className="text-emerald-100/95 text-xs md:text-sm font-medium leading-relaxed max-w-2xl">
+            Sistem Informasi Aktivitas Terintegrasi (SIKAT) MA Al-Ihsan Boarding School Riau. Halaman Pusat Kendali Kesiswaan untuk mengelola poin kedisiplinan, perizinan santri, and pengawasan ekstrakurikuler.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-slate-150/60 shadow-xs">
+        <span className="text-sm font-bold text-slate-700">Tahun Akademik:</span>
+        <TermSwitcher />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -1,40 +1,31 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-let host = process.env.DB_HOST || 'localhost';
-let port = parseInt(process.env.DB_PORT || '3306');
-if (host.includes(':')) {
-  const parts = host.split(':');
-  host = parts[0];
-  if (parts[1]) {
-    const parsedPort = parseInt(parts[1], 10);
-    if (!isNaN(parsedPort)) {
-      port = parsedPort;
-    }
+async function run() {
+  let host = process.env.DB_HOST || 'localhost';
+  let port = parseInt(process.env.DB_PORT || '3306');
+  if (host.includes(':')) {
+    const parts = host.split(':');
+    host = parts[0];
+    if (parts[1]) port = parseInt(parts[1], 10);
   }
-}
-
-const dbConfig = {
-  host,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'test',
-  port
-};
-
-async function main() {
-  try {
-    const conn = await mysql.createConnection(dbConfig);
-    const [tables] = await conn.query('SHOW TABLES');
-    console.log(tables);
-    
-    // Check sarpras table
-    const [sarpras] = await conn.query('SELECT * FROM sarpras LIMIT 5').catch(e => [[{error: e.message}]]);
-    console.log('Sarpras:', sarpras);
-    
-    conn.end();
-  } catch (e) {
-    console.error(e);
+  
+  if (!process.env.DB_HOST) {
+    console.log("No DB_HOST");
+    return;
   }
+  
+  const pool = mysql.createPool({
+    host, port,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME
+  });
+
+  const [rows] = await pool.query('DESCRIBE schedules');
+  console.log(rows);
+  const [data] = await pool.query('SELECT * FROM schedules LIMIT 5');
+  console.log(data);
+  process.exit(0);
 }
-main();
+run();

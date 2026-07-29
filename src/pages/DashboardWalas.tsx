@@ -8,7 +8,7 @@ import { mockStudents } from '../data/mock';
 import { 
   ShieldAlert, CheckCircle2, XCircle, Users, Calendar, CheckSquare, 
   Edit3, CalendarDays, Book, LineChart, ShieldCheck, Heart, Moon, 
-  ClipboardList 
+  ClipboardList, GraduationCap
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -20,6 +20,7 @@ export function DashboardWalas() {
 
   const menuItems = [
     { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
+    { to: '/users', icon: Users, label: 'Akun Pengguna' },
     { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
     { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
     { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
@@ -34,13 +35,29 @@ export function DashboardWalas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">Dashboard Wali Kelas</h1>
-          <p className="text-slate-500 mt-1 text-sm">Kelas Binaan: <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{user?.className}</span></p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 md:p-8 text-white shadow-md">
+        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-12">
+          <GraduationCap className="w-80 h-80 text-white" />
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-          {selectedDate}
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-xs rounded-full text-xs font-semibold text-emerald-300">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{selectedDate}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+            Selamat Datang, {user?.name || 'Wali Kelas'}
+          </h1>
+          <p className="text-emerald-100/95 text-xs md:text-sm font-medium leading-relaxed max-w-2xl">
+            Sistem Informasi Aktivitas Terintegrated (SIKAT) MA Al-Ihsan Boarding School Riau. Portal Wali Kelas untuk mengawasi perkembangan akademik, pembinaan akhlak, and rekapitulasi kehadiran kelas binaan Anda.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-150/60 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-700">Kelas Binaan:</span>
+          <span className="font-extrabold text-xs text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-150/50 uppercase tracking-wider">{user?.className || user?.class_name || '-'}</span>
         </div>
       </div>
 

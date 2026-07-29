@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { mockStudents, mockUsers, mockClasses } from '../data/mock';
-import { Edit2, Trash2, Plus, Search, X, Check, AlertCircle, Download, Upload, History } from 'lucide-react';
+import { Edit2, Trash2, Plus, Search, X, Check, AlertCircle, Download, Upload, History, Users } from 'lucide-react';
 import { Student, User, Role } from '../types';
 import * as XLSX from 'xlsx';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -174,15 +174,15 @@ export function AdminStudents() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentName.trim() || !studentNis.trim() || !studentClassName.trim()) {
-      setFeedback({ type: 'error', message: 'Nama, NIS, dan Kelas wajib diisi.' });
+    if (!studentName.trim() || !studentNis.trim()) {
+      setFeedback({ type: 'error', message: 'Nama dan NIS wajib diisi.' });
       return;
     }
 
     const payload: any = {
       name: studentName.trim(),
       nis: studentNis.trim(),
-      class_name: studentClassName,
+      class_name: studentClassName || studentGrade,
       gender: studentGender,
     };
 
@@ -196,7 +196,47 @@ export function AdminStudents() {
       }
     } else {
       try {
-        await apiClient('/crud.php?table=students', { method: 'POST', body: JSON.stringify(payload) });
+        const response = await apiClient('/crud.php?table=students', { method: 'POST', body: JSON.stringify(payload) });
+        if (response.status === 'success' && response.insertId) {
+           const newStudentId = response.insertId;
+           
+           // Create Ortu Account
+           const baseParentUsername = studentName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+           let expectedParentUsername = baseParentUsername;
+           let counter = 1;
+           while (users.some(u => u.username === expectedParentUsername)) {
+             expectedParentUsername = `${baseParentUsername}${counter}`;
+             counter++;
+           }
+           const parentName = 'Ayah/Bunda Ananda ' + studentName.trim();
+           await apiClient('/crud.php?table=users', {
+             method: 'POST',
+             body: JSON.stringify({
+                name: parentName,
+                username: expectedParentUsername,
+                password: bcrypt.hashSync('12345', 10),
+                role: 'ortu',
+                roles: JSON.stringify(['ortu']),
+                child_id: newStudentId,
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(parentName)}`
+             })
+           });
+
+           // Create Siswa Account if Grade is XII
+           if (studentGrade === 'XII') {
+             await apiClient('/crud.php?table=users', {
+                method: 'POST',
+                body: JSON.stringify({
+                   name: studentName.trim(),
+                   username: studentNis.trim(),
+                   password: bcrypt.hashSync(studentPassword || studentNis.trim(), 10),
+                   role: 'siswa',
+                   roles: JSON.stringify(['siswa']),
+                   avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(studentName.trim())}`
+                })
+             });
+           }
+        }
         setFeedback({ type: 'success', message: 'Data siswa berhasil ditambahkan.' });
       } catch (e) {
         setFeedback({ type: 'error', message: 'Gagal menambahkan siswa.' });
@@ -216,6 +256,70 @@ export function AdminStudents() {
   const getWaliKelas = (className: string) => {
     const walas = users.find((u: any) => u.role === 'walas' && u.className === className);
     return walas ? walas.name : 'Belum Ditugaskan';
+  };
+
+  const handleGenerateMissingAccounts = async () => {
+    setFeedback({ type: 'info', message: 'Sedang mengecek dan membuat akun yang kurang...' });
+    let createdCount = 0;
+    
+    try {
+       for (const student of students) {
+          // Check Ortu
+          const hasOrtu = users.some(u => String(u.childId) === String(student.id) && u.role === 'ortu');
+          if (!hasOrtu) {
+             const baseParentUsername = student.name.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+             let expectedParentUsername = baseParentUsername;
+             let counter = 1;
+             while (users.some(u => u.username === expectedParentUsername)) {
+               expectedParentUsername = `${baseParentUsername}${counter}`;
+               counter++;
+             }
+             const parentName = 'Ayah/Bunda Ananda ' + student.name.trim();
+             await apiClient('/crud.php?table=users', {
+               method: 'POST',
+               body: JSON.stringify({
+                  name: parentName,
+                  username: expectedParentUsername,
+                  password: bcrypt.hashSync('12345', 10),
+                  role: 'ortu',
+                  roles: JSON.stringify(['ortu']),
+                  child_id: student.id,
+                  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(parentName)}`
+               })
+             });
+             createdCount++;
+          }
+
+          // Check Siswa (Grade XII only)
+          const grade = student.grade || (student.className ? student.className.split(' ')[0] : 'X');
+          if (grade === 'XII') {
+             const hasSiswa = users.some(u => u.username === student.nis && u.role === 'siswa');
+             if (!hasSiswa) {
+                 await apiClient('/crud.php?table=users', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                       name: student.name.trim(),
+                       username: student.nis.trim(),
+                       password: bcrypt.hashSync(student.nis.trim(), 10),
+                       role: 'siswa',
+                       roles: JSON.stringify(['siswa']),
+                       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student.name.trim())}`
+                    })
+                 });
+                 createdCount++;
+             }
+          }
+       }
+       if (createdCount > 0) {
+          setFeedback({ type: 'success', message: `Berhasil membuat ${createdCount} akun yang kurang.` });
+          fetchData();
+       } else {
+          setFeedback({ type: 'success', message: 'Semua akun siswa dan orang tua sudah lengkap.' });
+       }
+    } catch (e) {
+       console.error(e);
+       setFeedback({ type: 'error', message: 'Terjadi kesalahan saat membuat akun.' });
+    }
   };
 
   const downloadTemplate = () => {
@@ -248,7 +352,7 @@ export function AdminStudents() {
           const className = row.Kelas || row.kelas || '';
           const gender = ((row['L/P'] || row.gender || 'L').toString().toUpperCase() === 'P' ? 'P' : 'L') as 'L' | 'P';
           
-          if (name && nis && className) {
+          if (name && nis) {
              const isXII = className.includes('XII') || className.includes('12');
              const providedPassword = row.Password || row.password || '';
              
@@ -403,6 +507,13 @@ export function AdminStudents() {
                 >
                   <Plus className="w-4 h-4" /> Tambah Siswa
                 </button>
+                <button
+                  onClick={handleGenerateMissingAccounts}
+                  className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                  title="Buat Akun yang Kurang"
+                >
+                  <Users className="w-4 h-4" /> Buat Akun
+                </button>
               </div>
               )}
             </div>
@@ -545,7 +656,7 @@ export function AdminStudents() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">L/P</label>
                     <CustomSelect

@@ -50,7 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userId: string, apiUser?: any) => {
     if (apiUser) {
-        const u = { ...apiUser, roles: apiUser.roles || [apiUser.role] };
+        let parsedRoles = apiUser.roles || [apiUser.role];
+        if (typeof parsedRoles === 'string') {
+          try {
+            parsedRoles = JSON.parse(parsedRoles);
+          } catch(e) {
+            parsedRoles = [apiUser.role];
+          }
+        }
+        const u = { ...apiUser, roles: parsedRoles };
         setUser(u);
         if (typeof window !== 'undefined') {
           localStorage.setItem('currentUser', JSON.stringify(u));
@@ -104,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('selectedAcademicTermId');
     }
   };
 

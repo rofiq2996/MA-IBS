@@ -4,6 +4,7 @@ import { Edit2, Trash2, Plus, X, Check, AlertCircle, Users } from 'lucide-react'
 import { mockClasses, mockUsers, mockStudents } from '../data/mock';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Student } from '../types';
+import { apiClient } from '../lib/apiClient';
 
 export function AdminAcademic() {
   const [classes, setClasses] = useState<any[]>([]);
@@ -12,13 +13,30 @@ export function AdminAcademic() {
 
   const [users, setUsers] = useState<any[]>([]);
 
+  const fetchData = async () => {
+    try {
+      const res = await apiClient('/sync');
+      if (res && res.classes) {
+        setClasses(res.classes);
+      }
+      if (res && res.users) {
+        setUsers(res.users);
+      }
+      if (res && res.students) {
+        setAllStudents(res.students);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+      // Fallback to mock data if API fails
+      setClasses([...mockClasses]);
+      setUsers([...mockUsers]);
+      setAllStudents([...mockStudents]);
+    }
+  };
+
   useEffect(() => {
-    
-  }, [classes]);
-  
-  useEffect(() => {
-    
-  }, [users]);
+    fetchData();
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);

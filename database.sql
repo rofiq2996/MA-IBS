@@ -38,7 +38,9 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL, -- Di produksi, gunakan hash (bcrypt atau plain-text disesuaikan)
   `name` varchar(100) NOT NULL,
-  `role` enum('admin', 'kamad', 'guru', 'walas', 'guru_quran', 'ortu', 'bk', 'pustaka', 'wakakurikulum', 'wakakesiswaan', 'siswa') NOT NULL,
+  `role` enum('admin', 'kamad', 'guru', 'walas', 'guru_quran', 'ortu', 'bk', 'pustaka', 'wakakurikulum', 'wakakesiswaan', 'siswa', 'tendik') NOT NULL,
+  `roles` json DEFAULT NULL, -- Multi-role support
+  `nuptk` varchar(50) DEFAULT NULL, -- NIPTK/NUPTK
   `gender` enum('L', 'P') DEFAULT NULL,
   `avatar` varchar(255) DEFAULT NULL,
   `class_name` varchar(50) DEFAULT NULL, -- Kelas binaan (untuk Wali Kelas)
@@ -384,18 +386,18 @@ CREATE TABLE `agenda` (
 
 -- Seed Users dengan Password Default Berbagai Role
 -- Catatan: Password disamakan dengan username masing-masing demi kemudahan login
-INSERT INTO `users` (`id`, `username`, `password`, `name`, `role`, `gender`, `class_name`) VALUES
-(1, 'admin', 'admin', 'Administrator MA IBS', 'admin', 'L', NULL),
-(2, 'kamad', 'kamad', 'Dr. H. Ahmad Syarif, M.A.', 'kamad', 'L', NULL),
-(3, 'guru', 'guru', 'Ust. Ahmad Dahlan, S.Pd.', 'guru', 'L', NULL),
-(4, 'walas', 'walas', 'Ustd. Siti Aminah, S.Ag.', 'walas', 'P', 'X MIPA 1'),
-(5, 'guru_quran', 'guru_quran', 'Ust. Umar Al-Hafizh, S.Pd.I', 'guru_quran', 'L', NULL),
-(6, 'bk', 'bk', 'Rahman Hakim, S.Psi.', 'bk', 'L', NULL),
-(7, 'pustaka', 'pustaka', 'Khairunnisa, S.I.P.', 'pustaka', 'P', NULL),
-(8, 'wakakurikulum', 'wakakurikulum', 'Dr. Syamsudin, M.Pd.', 'wakakurikulum', 'L', NULL),
-(9, 'wakakesiswaan', 'wakakesiswaan', 'Faisal Tanjung, M.Si.', 'wakakesiswaan', 'L', NULL),
-(10, 'ortu', 'ortu', 'Wali Murid Farhan', 'ortu', 'L', NULL),
-(11, 'siswa', 'siswa', 'Farhan Al-Fatih', 'siswa', 'L', 'X MIPA 1');
+INSERT INTO `users` (`id`, `username`, `password`, `name`, `role`, `roles`, `nuptk`, `gender`, `class_name`) VALUES
+(1, 'admin', 'admin', 'Administrator MA IBS', 'admin', '["admin"]', '1234567890', 'L', NULL),
+(2, 'kamad', 'kamad', 'Dr. H. Ahmad Syarif, M.A.', 'kamad', '["kamad"]', '2345678901', 'L', NULL),
+(3, 'guru', 'guru', 'Ust. Ahmad Dahlan, S.Pd.', 'guru', '["guru"]', '3456789012', 'L', NULL),
+(4, 'walas', 'walas', 'Ustd. Siti Aminah, S.Ag.', 'walas', '["walas","guru"]', '4567890123', 'P', 'X MIPA 1'),
+(5, 'guru_quran', 'guru_quran', 'Ust. Umar Al-Hafizh, S.Pd.I', 'guru_quran', '["guru_quran"]', '5678901234', 'L', NULL),
+(6, 'bk', 'bk', 'Rahman Hakim, S.Psi.', 'bk', '["bk"]', '6789012345', 'L', NULL),
+(7, 'pustaka', 'pustaka', 'Khairunnisa, S.I.P.', 'pustaka', '["pustaka"]', '7890123456', 'P', NULL),
+(8, 'wakakurikulum', 'wakakurikulum', 'Dr. Syamsudin, M.Pd.', 'wakakurikulum', '["wakakurikulum","guru"]', '8901234567', 'L', NULL),
+(9, 'wakakesiswaan', 'wakakesiswaan', 'Faisal Tanjung, M.Si.', 'wakakesiswaan', '["wakakesiswaan","guru"]', '9012345678', 'L', NULL),
+(10, 'ortu', 'ortu', 'Wali Murid Farhan', 'ortu', '["ortu"]', NULL, 'L', NULL),
+(11, 'siswa', 'siswa', 'Farhan Al-Fatih', 'siswa', '["siswa"]', NULL, 'L', 'X MIPA 1');
 
 -- Seed Classes (Daftar Kelas Madrasah)
 INSERT INTO `classes` (`id`, `name`, `wali_kelas_id`) VALUES

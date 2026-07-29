@@ -8,9 +8,13 @@ import { UserAvatar } from '../components/ui/UserAvatar';
 import bcrypt from 'bcryptjs';
 import * as XLSX from 'xlsx';
 import { apiClient } from '../lib/apiClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useAuth } from '../context/AuthContext';
 
 export function AdminUsers() {
-  const [activeTab, setActiveTab] = useState<'guru_tendik' | 'ortu' | 'siswa'>('guru_tendik');
+  const { user: currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState<'guru_tendik' | 'ortu' | 'siswa'>(currentUser?.role === 'walas' ? 'ortu' : 'guru_tendik');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,6 +33,7 @@ export function AdminUsers() {
   // Form Fields
   const [userName, setUserName] = useState('');
   const [userUsername, setUserUsername] = useState('');
+  const [userNuptk, setUserNuptk] = useState('');
   const [userPassword, setUserPassword] = useState('');
   const [userRoles, setUserRoles] = useState<Role[]>(['guru']);
   const [userGender, setUserGender] = useState<'L' | 'P' | ''>('');
@@ -85,6 +90,7 @@ export function AdminUsers() {
         id: String(u.id),
         name: u.name,
         username: u.username,
+        nuptk: u.nuptk,
         password: u.password,
         role: u.role,
         roles: (typeof u.roles === 'string' ? JSON.parse(u.roles) : u.roles) || [u.role],
@@ -117,7 +123,7 @@ export function AdminUsers() {
     const templateData = [
       {
         "Nama Lengkap": "Ahmad Fauzi, S.Pd",
-        "Username": "ahmadfauzi",
+        "NIPTK/NUPTK (Username)": "1234567890",
         "Password": "12345",
         "Peran Utama": "guru",
         "Jenis Kelamin (L/P)": "L",
@@ -126,7 +132,7 @@ export function AdminUsers() {
       },
       {
         "Nama Lengkap": "Siti Nurhaliza, M.Pd",
-        "Username": "sitinurhaliza",
+        "NIPTK/NUPTK (Username)": "0987654321",
         "Password": "12345",
         "Peran Utama": "walas",
         "Jenis Kelamin (L/P)": "P",
@@ -135,7 +141,7 @@ export function AdminUsers() {
       },
       {
         "Nama Lengkap": "Drs. Ahmad Dahlan",
-        "Username": "ahmaddahlan",
+        "NIPTK/NUPTK (Username)": "111122223333",
         "Password": "12345",
         "Peran Utama": "kamad",
         "Jenis Kelamin (L/P)": "L",
@@ -144,7 +150,7 @@ export function AdminUsers() {
       },
       {
         "Nama Lengkap": "Dina, S.Psi",
-        "Username": "dina",
+        "NIPTK/NUPTK (Username)": "444455556666",
         "Password": "12345",
         "Peran Utama": "bk",
         "Jenis Kelamin (L/P)": "P",
@@ -153,7 +159,7 @@ export function AdminUsers() {
       },
       {
         "Nama Lengkap": "Ust. Umar, S.Pd.I",
-        "Username": "ustumar",
+        "NIPTK/NUPTK (Username)": "777788889999",
         "Password": "12345",
         "Peran Utama": "guru_quran",
         "Jenis Kelamin (L/P)": "L",
@@ -165,7 +171,7 @@ export function AdminUsers() {
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     worksheet['!cols'] = [
       { wch: 25 }, // Nama Lengkap
-      { wch: 18 }, // Username
+      { wch: 22 }, // NIPTK/NUPTK
       { wch: 15 }, // Password
       { wch: 20 }, // Peran Utama
       { wch: 18 }, // Jenis Kelamin
@@ -203,7 +209,7 @@ export function AdminUsers() {
           const rawName = String(row['Nama Lengkap'] || row['Nama'] || row['nama'] || '').trim();
           if (!rawName) return;
 
-          let rawUsername = String(row['Username'] || row['username'] || '').trim();
+          let rawUsername = String(row['NIPTK/NUPTK (Username)'] || row['NUPTK'] || row['NIPTK'] || row['Username'] || row['username'] || '').trim();
           if (!rawUsername) {
             let currentUsername = rawName.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
             let finalUsername = currentUsername;
@@ -288,10 +294,13 @@ export function AdminUsers() {
             }));
           }
 
+          const isPendidik = uniqueRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r));
+
           const newUser: User = {
             id: String(Date.now() + index * 10 + Math.floor(Math.random() * 1000)),
             name: rawName,
             username: rawUsername,
+            nuptk: isPendidik ? rawUsername : undefined,
             password: hashedPassword,
             role: matchedRole,
             roles: uniqueRoles,
@@ -351,6 +360,7 @@ export function AdminUsers() {
     setEditingId(null);
     setUserName('');
     setUserUsername('');
+    setUserNuptk('');
     setUserPassword('');
     setUserRoles(['guru']);
     setUserGender('');
@@ -366,6 +376,8 @@ export function AdminUsers() {
     setEditingId(u.id);
     setUserName(u.name);
     setUserUsername(u.username || '');
+    setUserNuptk(u.nuptk || '');
+    
     setUserPassword('');
     setUserRoles(u.roles && u.roles.length > 0 ? u.roles : [u.role]);
     setUserGender(u.gender || '');
@@ -403,18 +415,28 @@ export function AdminUsers() {
       return;
     }
 
+    const isPendidik = userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r));
+    const isAdmin = userRoles.includes('admin');
+    const isPendidikOrAdmin = isPendidik || isAdmin;
+
+    if (isPendidikOrAdmin && !userNuptk.trim()) {
+      setFeedback({ type: 'error', message: isPendidik ? 'NIPTK / NUPTK wajib diisi untuk Pendidik/Guru.' : 'Username atau NUPTK wajib diisi untuk Admin.' });
+      return;
+    }
+
     let generatedUsername = userUsername.trim();
-    if (!editingId && !generatedUsername) {
+    if (!editingId) {
       const nameParts = userName.trim().split(' ').filter(Boolean);
       let currentUsername = (nameParts[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
       let counter = 1;
       let finalUsername = currentUsername;
-      while (users.some(u => u.username === finalUsername)) {
+      while (users.some(u => u.username?.toLowerCase() === finalUsername.toLowerCase())) {
         finalUsername = `${currentUsername}${counter}`;
         counter++;
       }
       generatedUsername = finalUsername;
     }
+
     
     // Auto-generate password if empty on creation
     let finalPassword = userPassword.trim();
@@ -428,6 +450,7 @@ export function AdminUsers() {
     const payload: any = {
         name: userName.trim(),
         username: generatedUsername,
+        nuptk: isPendidikOrAdmin ? userNuptk.trim() : null,
         role: userRoles[0], // fallback
         roles: JSON.stringify(userRoles), // store array
         gender: userGender || null,
@@ -468,6 +491,9 @@ export function AdminUsers() {
     fetchUsers();
   };
 
+  const isWalas = currentUser?.role === 'walas';
+  const isWalasXII = isWalas && (currentUser?.className?.includes('XII') || currentUser?.className?.includes('12'));
+
   const filteredUsers = users.filter(u => {
     let matchTab = false;
     const userRolesList = u.roles && u.roles.length > 0 ? u.roles : [u.role];
@@ -475,8 +501,19 @@ export function AdminUsers() {
       matchTab = userRolesList.some(r => ['guru', 'walas', 'kamad', 'admin', 'wakakurikulum', 'wakakesiswaan', 'bk', 'pustaka', 'guru_quran'].includes(r));
     } else if (activeTab === 'ortu') {
       matchTab = userRolesList.includes('ortu');
+      if (isWalas && matchTab) {
+        const child = students.find(s => s.id === u.childId);
+        if (!child || child.className !== currentUser?.className) {
+          matchTab = false;
+        }
+      }
     } else if (activeTab === 'siswa') {
       matchTab = userRolesList.includes('siswa');
+      if (isWalas && matchTab) {
+        if (!isWalasXII || u.className !== currentUser?.className) {
+          matchTab = false;
+        }
+      }
     }
 
     const matchSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -484,6 +521,53 @@ export function AdminUsers() {
 
     return matchTab && matchSearch;
   });
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    let head = [['No', 'Nama', 'Role', 'Username', 'Password']];
+    let body: any[] = [];
+
+    if (activeTab === 'guru_tendik') {
+      head = [['No', 'Nama', 'Role', 'Username', 'NIPTK/NUPTK', 'Password']];
+      body = filteredUsers.map((u, i) => [
+        i + 1,
+        u.name,
+        u.roles?.join(', ') || u.role,
+        u.username || '-',
+        u.nuptk || '-',
+        u.password ? '12345' : '-'
+      ]);
+    } else if (activeTab === 'ortu') {
+      head = [['No', 'Nama Siswa', 'Kelas', 'Username', 'Password']];
+      body = filteredUsers.map((u, i) => {
+        const child = students.find(s => s.id === u.childId);
+        return [
+          i + 1,
+          child ? child.name : u.childName || '-',
+          child ? child.className : '-',
+          u.username || '-',
+          u.password ? '12345' : '-'
+        ];
+      });
+    } else if (activeTab === 'siswa') {
+      head = [['No', 'Nama', 'Kelas', 'Username', 'Password']];
+      body = filteredUsers.map((u, i) => [
+        i + 1,
+        u.name,
+        u.className || '-',
+        u.username || '-',
+        u.password ? '12345' : '-'
+      ]);
+    }
+
+    doc.text(`Data Pengguna - ${activeTab.toUpperCase()}`, 14, 15);
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 20,
+    });
+    doc.save(`Data_Pengguna_${activeTab}.pdf`);
+  };
 
   return (
     <div className="space-y-6">
@@ -498,25 +582,36 @@ export function AdminUsers() {
             onChange={handleFileUpload}
           />
           <button
-            onClick={downloadTemplate}
-            className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-            title="Download Template Excel Guru & Tendik"
+            onClick={downloadPDF}
+            className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+            title="Download User"
           >
-            <Download className="w-4 h-4" /> Unduh Template
+            <Download className="w-4 h-4" /> Download User
           </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-            title="Upload Data Excel Guru & Tendik"
-          >
-            <Upload className="w-4 h-4" /> Import Excel
-          </button>
-          <button
-            onClick={openAddModal}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Tambah Pengguna
-          </button>
+          {!isWalas && (
+            <>
+              <button
+                onClick={downloadTemplate}
+                className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                title="Download Template Excel Guru & Tendik"
+              >
+                <Download className="w-4 h-4" /> Unduh Template
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                title="Upload Data Excel Guru & Tendik"
+              >
+                <Upload className="w-4 h-4" /> Import Excel
+              </button>
+              <button
+                onClick={openAddModal}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Tambah Pengguna
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -544,24 +639,28 @@ export function AdminUsers() {
               </div>
             </div>
             <div className="flex border-b border-slate-200 overflow-x-auto hide-scrollbar">
-              <button 
-                onClick={() => setActiveTab('guru_tendik')}
-                className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'guru_tendik' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              >
-                Guru & Tendik
-              </button>
+              {!isWalas && (
+                <button 
+                  onClick={() => setActiveTab('guru_tendik')}
+                  className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'guru_tendik' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                  Guru & Tendik
+                </button>
+              )}
               <button 
                 onClick={() => setActiveTab('ortu')}
                 className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'ortu' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
               >
                 Orang Tua
               </button>
-              <button 
-                onClick={() => setActiveTab('siswa')}
-                className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'siswa' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-              >
-                Siswa Kelas XII
-              </button>
+              {(!isWalas || isWalasXII) && (
+                <button 
+                  onClick={() => setActiveTab('siswa')}
+                  className={`px-4 py-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'siswa' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                >
+                  {isWalas ? 'Siswa Kelas XII' : 'Siswa'}
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -573,7 +672,7 @@ export function AdminUsers() {
                   <th className="pb-3 px-4 font-bold">Profil</th>
                   <th className="pb-3 px-4 font-bold">Akun Login</th>
                   <th className="pb-3 px-4 font-bold">Peran & Keterangan</th>
-                  <th className="pb-3 px-4 font-bold text-right">Aksi</th>
+                  {!isWalas && <th className="pb-3 px-4 font-bold text-right">Aksi</th>}
                 </tr>
               </thead>
               <tbody>
@@ -589,8 +688,13 @@ export function AdminUsers() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-bold text-slate-800 text-sm">{u.username}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">****</p>
+                        <div className="flex flex-col">
+                          <p className="font-bold text-slate-800 text-sm">{u.username}</p>
+                          {u.nuptk && (
+                            <p className="text-[10px] text-slate-500">NIPTK: <span className="font-mono font-semibold">{u.nuptk}</span></p>
+                          )}
+                          <p className="text-[10px] text-slate-400 font-mono">****</p>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col items-start gap-1">
@@ -610,14 +714,16 @@ export function AdminUsers() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEditModal(u)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded" title="Edit">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => setDeleteConfirmId(u.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {!isWalas && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => openEditModal(u)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded" title="Edit">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(u.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -690,9 +796,26 @@ export function AdminUsers() {
                   />
                 </div>
 
+                {userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan', 'admin'].includes(r)) && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      {userRoles.includes('admin') && !userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) ? 'Username / NUPTK' : 'NIPTK / NUPTK'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={userRoles.includes('admin') && !userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) ? 'Masukkan Username atau NUPTK...' : 'Masukkan NIPTK atau NUPTK...'}
+                      value={userNuptk}
+                      onChange={(e) => setUserNuptk(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+                    />
+                    <p className="text-[10px] text-slate-500 font-medium">Bisa digunakan untuk login, dan sistem juga akan otomatis membuatkan username dari nama depan.</p>
+                  </div>
+                )}
+
                 {!editingId ? (
                   <div className="col-span-2 text-xs text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <span className="font-bold text-blue-700">Info:</span> Username dan Password akan dibuat secara otomatis (Username = Nama Depan, Password = 12345).
+                    <span className="font-bold text-blue-700">Info:</span> Username login akan otomatis dibuat dari nama depan ustadz/ustadzah atau siswa. Guru & tendik juga bisa login menggunakan NIPTK / NUPTK. Password default adalah 12345.
                   </div>
                 ) : (
                   <div className="space-y-1.5">
@@ -730,7 +853,11 @@ export function AdminUsers() {
                           checked={userRoles.includes(roleOpt.value as Role)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setUserRoles([...userRoles, roleOpt.value as Role]);
+                              if (roleOpt.value === 'siswa' || roleOpt.value === 'ortu') {
+                                setUserRoles([roleOpt.value as Role]);
+                              } else {
+                                setUserRoles([...userRoles.filter(r => r !== 'siswa' && r !== 'ortu'), roleOpt.value as Role]);
+                              }
                             } else {
                               setUserRoles(userRoles.filter(r => r !== roleOpt.value));
                               if (!userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) && roleOpt.value !== 'siswa' && roleOpt.value !== 'ortu' && roleOpt.value !== 'admin') {

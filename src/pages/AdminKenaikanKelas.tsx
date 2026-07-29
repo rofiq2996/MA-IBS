@@ -50,7 +50,10 @@ export function AdminKenaikanKelas() {
     }
 
     if (window.confirm(`Anda yakin ingin memindahkan ${selectedStudents.length} siswa ke ${targetClass === 'LULUS' ? 'Status Lulus' : 'Tingkat ' + targetClass}?`)) {
-      const activeTerm = JSON.parse(localStorage.getItem('mockAcademicTerms') || '[]').find((t: any) => t.isActive);
+      const storedTerms = JSON.parse(localStorage.getItem('mockAcademicTerms') || '[]');
+      const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+      let activeTerm = selectedTermId ? storedTerms.find((t: any) => t.id === selectedTermId) : null;
+      if (!activeTerm) activeTerm = storedTerms.find((t: any) => t.isActive);
       const academicYear = activeTerm ? `${activeTerm.year} (${activeTerm.semester})` : '2026/2027';
 
       const updatedStudents = students.map(s => {

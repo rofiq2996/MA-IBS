@@ -13,6 +13,7 @@ export interface User {
   childId?: string; // For Ortu
   childName?: string; // For Ortu
   subjects?: { id: string; subjectName: string; className: string }[]; // For Guru
+  nuptk?: string; // NUPTK/NIPTK
 }
 
 export interface AcademicHistory {

@@ -1,3 +1,4 @@
+import { TermSwitcher } from '../components/ui/TermSwitcher';
 import { apiClient } from '../lib/apiClient';
 import React, { useState, useEffect } from 'react';
 import { UserAnnouncements } from '../components/ui/UserAnnouncements';
@@ -8,22 +9,71 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAuth } from '../context/AuthContext';
 
 import { mockUsers, mockClasses, mockStudents } from '../data/mock';
 export function DashboardAdmin() {
+  const { user } = useAuth();
+  const todayDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [weeklyAttendance, setWeeklyAttendance] = useState<any[]>([
+    { name: 'Senin', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Selasa', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Rabu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Kamis', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Jumat', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Sabtu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+    { name: 'Minggu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+  ]);
+
   const fetchData = async () => {
     try {
-      const [studentsData, classesData, usersData] = await Promise.all([
+      const [studentsData, classesData, usersData, attendanceData] = await Promise.all([
         apiClient('/crud.php?table=students'),
         apiClient('/crud.php?table=classes'),
-        apiClient('/crud.php?table=users')
+        apiClient('/crud.php?table=users'),
+        apiClient('/crud.php?table=student_attendance')
       ]);
       setStudents(studentsData);
       setClasses(classesData);
       setUsers(usersData);
+
+      // Process weekly attendance
+      if (Array.isArray(attendanceData)) {
+        const initialWeek = [
+          { name: 'Senin', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Selasa', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Rabu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Kamis', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Jumat', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Sabtu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+          { name: 'Minggu', Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 },
+        ];
+
+        attendanceData.forEach((record: any) => {
+           const d = new Date(record.date);
+           let dayIndex = d.getDay(); // 0 is Sunday, 1 is Monday...
+           let adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1; // Map Monday to 0, Sunday to 6
+
+           if (adjustedIndex >= 0 && adjustedIndex <= 6) {
+             const status = record.status; // Hadir, Sakit, Izin, Alpa
+             if (status === 'Hadir') initialWeek[adjustedIndex].Hadir += 1;
+             else if (status === 'Sakit') initialWeek[adjustedIndex].Sakit += 1;
+             else if (status === 'Izin') initialWeek[adjustedIndex].Izin += 1;
+             else if (status === 'Alpa') initialWeek[adjustedIndex].Alpa += 1;
+           }
+        });
+
+        // Filter out weekends if they are empty
+        const activeDays = initialWeek.filter(day => day.Hadir > 0 || day.Sakit > 0 || day.Izin > 0 || day.Alpa > 0 || !['Sabtu', 'Minggu'].includes(day.name));
+        
+        setWeeklyAttendance(activeDays);
+      }
+
     } catch (e) {
       console.error(e);
     }
@@ -35,6 +85,25 @@ export function DashboardAdmin() {
 
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [activeTermName, setActiveTermName] = useState<string>('-');
+  const [activeTermSemester, setActiveTermSemester] = useState<string>('-');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('mockAcademicTerms');
+    if (stored) {
+      try {
+        const terms = JSON.parse(stored);
+        const activeTerm = terms.find((t: any) => t.isActive);
+        if (activeTerm) {
+          setActiveTermName(activeTerm.year || '-');
+          setActiveTermSemester(activeTerm.semester || '-');
+        } else if (terms.length > 0) {
+          setActiveTermName(terms[0].year || '-');
+          setActiveTermSemester(terms[0].semester || '-');
+        }
+      } catch (e) {}
+    }
+  }, []);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -55,13 +124,30 @@ export function DashboardAdmin() {
   const persenHadir = totalHari > 0 ? Math.round((totalHadir / totalHari) * 100) : 0;
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">Administrasi Sistem</h1>
-          <p className="text-slate-500 mt-1 text-sm">Pusat kendali operasional madrasah.</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 md:p-8 text-white shadow-md">
+        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-12">
+          <GraduationCap className="w-80 h-80 text-white" />
         </div>
-      
-        <Button className="shrink-0 gap-2"><Database className="w-4 h-4" /> Import Data</Button>
+        <div className="relative z-10 max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-xs rounded-full text-xs font-semibold text-emerald-300">
+            <CalendarIcon className="w-3.5 h-3.5" />
+            <span>{todayDate}</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+            Selamat Datang, {user?.name || 'Administrator'}
+          </h1>
+          <p className="text-emerald-100/95 text-xs md:text-sm font-medium leading-relaxed max-w-2xl">
+            Sistem Informasi Aktivitas Terintegrasi (SIKAT) MA Al-Ihsan Boarding School Riau. Halaman Pusat Kendali Operasional dan Administrasi Sistem Madrasah.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-150/60 shadow-xs">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-slate-700">Tahun Akademik:</span>
+          <TermSwitcher />
+        </div>
       </div>
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-50 pb-3">
@@ -137,8 +223,8 @@ export function DashboardAdmin() {
             <CalendarIcon className="w-4 h-4" /> Tahun Ajaran
           </div>
           <div className="flex items-end justify-between mt-2">
-            <span className="text-xl font-black">2026/2027</span>
-            <span className="text-[10px] bg-emerald-400/30 px-2 py-1 rounded backdrop-blur-sm font-bold uppercase tracking-wider">Ganjil</span>
+            <span className="text-xl font-black">{activeTermName}</span>
+            <span className="text-[10px] bg-emerald-400/30 px-2 py-1 rounded backdrop-blur-sm font-bold uppercase tracking-wider">{activeTermSemester}</span>
           </div>
         </div>
 
@@ -346,13 +432,7 @@ export function DashboardAdmin() {
             </CardHeader>
             <CardContent className="pt-4 h-64 w-full">
               <ResponsiveContainer width="100%" height={256}>
-                <BarChart data={[
-                  { name: 'Senin', Hadir: 400, Sakit: 10, Izin: 5, Alpa: 2 },
-                  { name: 'Selasa', Hadir: 390, Sakit: 15, Izin: 8, Alpa: 4 },
-                  { name: 'Rabu', Hadir: 410, Sakit: 5, Izin: 2, Alpa: 0 },
-                  { name: 'Kamis', Hadir: 395, Sakit: 12, Izin: 6, Alpa: 4 },
-                  { name: 'Jumat', Hadir: 380, Sakit: 20, Izin: 10, Alpa: 7 },
-                ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={weeklyAttendance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
@@ -374,12 +454,7 @@ export function DashboardAdmin() {
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-4">
-                {[
-                  { user: 'Budi Santoso (Admin)', action: 'Menambahkan data siswa baru Kelas X MIPA 1', time: '10 menit yang lalu' },
-                  { user: 'Ahmad Fauzi (Guru)', action: 'Mengunggah nilai UTS Pendidikan Agama Islam', time: '35 menit yang lalu' },
-                  { user: 'Siti Aminah (Walas)', action: 'Menyetujui perizinan sakit siswa (Ahmad)', time: '1 jam yang lalu' },
-                  { user: 'System', action: 'Backup otomatis database harian berhasil', time: 'Semalam, 00:00' },
-                ].map((log, i) => (
+                {[].length > 0 ? [].map((log, i) => (
                   <div key={i} className="flex gap-4 items-start pb-4 border-b border-slate-100 last:border-0 last:pb-0">
                     <div className="w-2 h-2 mt-1.5 rounded-full bg-emerald-500 shrink-0"></div>
                     <div>
@@ -390,7 +465,11 @@ export function DashboardAdmin() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="flex flex-col items-center justify-center py-6 px-4 bg-slate-50 border border-slate-100 border-dashed rounded-xl text-center">
+                    <p className="text-[10px] font-bold text-slate-500">Belum ada aktivitas</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

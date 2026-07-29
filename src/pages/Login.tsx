@@ -11,6 +11,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotUsername, setForgotUsername] = useState('');
   const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -122,7 +123,7 @@ export function Login() {
             )}
             
             <div>
-              <label className="block text-[11px] md:text-xs font-bold text-slate-700 mb-1.5 md:mb-2">Username / NIS</label>
+              <label className="block text-[11px] md:text-xs font-bold text-slate-700 mb-1.5 md:mb-2">Username / NIS / NIPTK</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <UserIcon className="h-4 w-4 text-slate-400" />
@@ -132,7 +133,7 @@ export function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
                   className="block w-full pl-10 pr-3 py-2.5 md:py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white outline-none transition-all placeholder:text-slate-400"
-                  placeholder="Masukkan Username/NIS"
+                  placeholder="Username, NIS, atau NIPTK"
                   required
                 />
               </div>

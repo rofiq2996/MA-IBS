@@ -61,16 +61,32 @@ export function AdminRombel() {
     s.nis.toLowerCase().includes(searchAvailable.toLowerCase())
   );
 
-  const handleAddStudent = (studentId: string) => {
-    const updated = students.map(s => s.id === studentId ? { ...s, className: selectedClass } : s);
-    setStudents(updated);
-    mockStudents.splice(0, mockStudents.length, ...updated);
+  const handleAddStudent = async (studentId: string) => {
+    try {
+      await apiClient(`/crud.php?table=students&id=${studentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ class_name: selectedClass })
+      });
+      const updated = students.map(s => s.id === studentId ? { ...s, className: selectedClass } : s);
+      setStudents(updated);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleRemoveStudent = (studentId: string) => {
-    const updated = students.map(s => s.id === studentId ? { ...s, className: '' } : s);
-    setStudents(updated);
-    mockStudents.splice(0, mockStudents.length, ...updated);
+  const handleRemoveStudent = async (studentId: string) => {
+    try {
+      const student = students.find(s => s.id === studentId);
+      const grade = student ? student.grade : 'X';
+      await apiClient(`/crud.php?table=students&id=${studentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ class_name: grade })
+      });
+      const updated = students.map(s => s.id === studentId ? { ...s, className: grade } : s);
+      setStudents(updated);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (

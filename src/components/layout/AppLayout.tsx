@@ -9,19 +9,71 @@ import { Role } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { UserAvatar } from '../ui/UserAvatar';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
+import { Download } from 'lucide-react';
 
 export function AppLayout() {
   const { user, logout, switchRole, updateUser } = useAuth();
   const navigate = useNavigate();
+  const { isInstallable, promptInstall } = usePWAInstall();
   const location = useLocation();
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  
+  const [terms, setTerms] = useState<any[]>([]);
+  const [selectedTermId, setSelectedTermId] = useState<string>('');
+
   const menuRef = useRef<HTMLDivElement>(null);
+  const termMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let parsedTerms = [];
+      const stored = localStorage.getItem('mockAcademicTerms');
+      
+      if (stored) {
+        try {
+          parsedTerms = JSON.parse(stored);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      
+      if (parsedTerms.length === 0) {
+        // Fallback default terms
+        parsedTerms = [
+           { id: '1', year: '2026/2027', semester: 'Ganjil', isActive: true },
+           { id: '2', year: '2026/2027', semester: 'Genap', isActive: false }
+        ];
+        localStorage.setItem('mockAcademicTerms', JSON.stringify(parsedTerms));
+      }
+      
+      setTerms(parsedTerms);
+      
+      const savedId = localStorage.getItem('selectedAcademicTermId');
+      if (savedId) {
+        setSelectedTermId(savedId);
+      } else {
+        const active = parsedTerms.find((t: any) => t.isActive);
+        if (active) {
+          setSelectedTermId(active.id);
+        } else if (parsedTerms.length > 0) {
+          setSelectedTermId(parsedTerms[0].id);
+        }
+      }
+    }
+  }, []);
+
+  const activeTerm = terms.find(t => t.id === selectedTermId) || terms.find(t => t.isActive) || terms[0];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsRoleMenuOpen(false);
+      }
+      if (termMenuRef.current && !termMenuRef.current.contains(event.target as Node)) {
+        setIsTermMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -70,23 +122,22 @@ export function AppLayout() {
                 onClick={() => {
                   navigate(-1);
                 }}
-                className="flex items-center space-x-1.5 text-emerald-700 hover:text-emerald-800 active:scale-95 transition-all py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl"
+                className="flex sm:hidden items-center space-x-1.5 text-emerald-700 hover:text-emerald-800 active:scale-95 transition-all py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl"
               >
                 <ChevronLeft className="w-4 h-4 shrink-0" />
                 <span className="text-[10px] font-black uppercase tracking-wider">Kembali</span>
               </button>
             ) : (
               <div className="flex items-center space-x-2 shrink-0 sm:hidden">
-                <img src="https://lh3.googleusercontent.com/d/1zjkq3eRW8Q_BQSZhAbb6gMgcVwPHAQcc" alt="MBI AL-IHSAN Logo" className="h-9 w-auto max-w-[100px] object-contain shrink-0" />
+                <img src="https://lh3.googleusercontent.com/d/1zjkq3eRW8Q_BQSZhAbb6gMgcVwPHAQcc" alt="SIKAT MA AL-IHSAN Logo" className="h-9 w-auto max-w-[100px] object-contain shrink-0" />
                 <div className="leading-tight">
-                  <h1 className="font-black text-xs text-slate-800 tracking-wider">MBI AL-IHSAN</h1>
-                  <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest">Sistem Terpadu</p>
+                  <h1 className="font-black text-xs text-slate-800 tracking-wider">SIKAT MA AL-IHSAN</h1>
+                  <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest">SYSTEM v1.0</p>
                 </div>
               </div>
             )}
             
             <h2 className="text-sm font-bold text-slate-600 hidden sm:block">Dashboard {user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('_', ' ')}</h2>
-            <span className="hidden sm:inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded font-bold uppercase tracking-tight">Semester Ganjil 2026/2027</span>
           </div>
           <div className="flex items-center space-x-3 sm:space-x-4">
             <div className="relative hidden sm:block">
@@ -95,12 +146,13 @@ export function AppLayout() {
             
             <span className="hidden sm:block h-6 w-[1px] bg-slate-200" />
             
-            <div className="hidden sm:flex items-center space-x-3 pl-2 sm:pl-4">
-              <div className="flex flex-col items-end text-right">
-                <p className="text-xs font-bold text-slate-800">{user.name}</p>
-                {user.roles && user.roles.length > 1 ? (
+            <div className="flex items-center space-x-2 sm:space-x-3 pl-2 sm:pl-4">
+              <div className="flex flex-col items-end gap-1.5 text-right">
+                <p className="hidden sm:block text-xs font-bold text-slate-800">{user.name}</p>
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2">
+                  {user.roles && user.roles.length > 1 ? (
                   <>
-                    <div className="relative inline-block mt-0.5" ref={menuRef}>
+                    <div className="relative hidden sm:inline-block" ref={menuRef}>
                       <button
                         onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
                         className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[10px] text-emerald-700 font-black capitalize py-1 px-3 rounded-lg transition-all shadow-sm cursor-pointer select-none active:scale-95"
@@ -118,7 +170,7 @@ export function AppLayout() {
                             transition={{ duration: 0.15, ease: "easeOut" }}
                             className="absolute right-0 mt-1.5 w-40 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-50 origin-top-right overflow-hidden"
                           >
-                            {user.roles.map((r) => {
+                            {(Array.isArray(user.roles) ? user.roles : [user.role]).map((r) => {
                               const isActive = user.role === r;
                               return (
                                 <button
@@ -145,11 +197,13 @@ export function AppLayout() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-[10px] text-slate-500 capitalize">{user.role.replace('_', ' ')}</p>
+                  <p className="hidden sm:block text-[10px] text-slate-500 capitalize">{user.role.replace('_', ' ')}</p>
                 )}
+
+                </div>
               </div>
               <div 
-                className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 overflow-hidden relative cursor-pointer group shrink-0"
+                className="hidden sm:block w-8 h-8 rounded-full bg-slate-200 border border-slate-300 overflow-hidden relative cursor-pointer group shrink-0"
                 onClick={() => document.getElementById('desktop-avatar-upload')?.click()}
                 title="Ganti Foto Profil"
               >
@@ -178,7 +232,27 @@ export function AppLayout() {
               />
             </div>
 
+            
             <div className="flex items-center space-x-2 sm:pl-4 sm:border-l border-slate-200">
+              {isInstallable && (
+                <button
+                  onClick={promptInstall}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full text-xs font-bold transition-colors mr-2 cursor-pointer"
+                  title="Install Aplikasi"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Install App
+                </button>
+              )}
+              {isInstallable && (
+                <button
+                  onClick={promptInstall}
+                  className="sm:hidden flex items-center justify-center w-8 h-8 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full transition-colors mr-1 cursor-pointer"
+                  title="Install Aplikasi"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              )}
               <button onClick={() => navigate('/notifications')} className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 cursor-pointer text-slate-600 transition-colors">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>

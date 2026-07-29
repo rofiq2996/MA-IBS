@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { mockStudents } from '../data/mock';
@@ -154,12 +155,39 @@ export function JadwalMengajar() {
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'wakakurikulum';
   const [filterHari, setFilterHari] = useState('Semua Hari');
+  const [loading, setLoading] = useState(true);
   
-  const [jadwal, setJadwal] = useState([
-    { id: 1, hari: 'Senin', time: '07:15 - 08:45', kelas: 'X-IPA 1', mapel: 'Matematika Peminatan' },
-    { id: 2, hari: 'Senin', time: '08:45 - 10:15', kelas: 'XI-IPA 2', mapel: 'Matematika Peminatan' },
-    { id: 3, hari: 'Selasa', time: '10:45 - 12:15', kelas: 'XII-IPA 1', mapel: 'Matematika Lanjut' },
-  ]);
+  const [jadwal, setJadwal] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        setLoading(true);
+        // Fetch from API
+        const data = await apiClient('/crud.php?table=schedules');
+        if (Array.isArray(data)) {
+          // Filter out schedules just for this teacher if not admin/wakakurikulum
+          // Wait, if it's admin, they might want to see all. But the page is for 'Guru'.
+          // Let's filter by user.id if not admin.
+          const teacherSchedules = canEdit ? data : data.filter((d: any) => d.teacher_id === user?.id);
+          
+          const mapped = teacherSchedules.map((d: any) => ({
+            id: d.id,
+            hari: d.day || 'Senin',
+            time: (d.start_time?.substring(0,5) || '') + ' - ' + (d.end_time?.substring(0,5) || ''),
+            kelas: d.class_name,
+            mapel: d.subject_name
+          }));
+          setJadwal(mapped);
+        }
+      } catch(err) {
+        console.error('Failed to load schedules', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSchedules();
+  }, [user, canEdit]);
 
   const hariOptions = ['Semua Hari', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -506,7 +534,14 @@ export function InputNilai() {
       if (stored) {
         try {
           const terms = JSON.parse(stored);
-          const activeTerm = terms.find((t: any) => t.isActive);
+          const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+          let activeTerm = null;
+          if (selectedTermId) {
+            activeTerm = terms.find((t: any) => t.id === selectedTermId);
+          }
+          if (!activeTerm) {
+            activeTerm = terms.find((t: any) => t.isActive);
+          }
           if (activeTerm && activeTerm.semester) {
             setSemester(activeTerm.semester);
           }
@@ -673,10 +708,12 @@ export function JurnalMengajar() {
   }));
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selected, setSelected] = useState(options[0]?.value || '');
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [materi, setMateri] = useState('');
   const [catatan, setCatatan] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const [jurnals, setJurnals] = useState([
     {
@@ -688,29 +725,75 @@ export function JurnalMengajar() {
       catatan: 'Semua siswa hadir dan aktif'
     }
   ]);
-  
+
+  const [toastMessage, setToastMessage] = useState('');
+
   const handleSave = () => {
     if (!selected || !materi || !tanggal) {
-      window.alert('Mohon lengkapi form jurnal!');
+      setToastMessage('Mohon lengkapi form jurnal!');
+      setTimeout(() => setToastMessage(''), 3000);
       return;
     }
     
     const [mapel, kelas] = selected.split(' - ');
-    const newJurnal = {
-      id: Date.now().toString(),
-      tanggal: new Date(tanggal).toLocaleDateString('id-ID'),
-      kelas: kelas || '',
-      mataPelajaran: mapel || '',
-      materi,
-      catatan
-    };
+    const [year, month, day] = tanggal.split('-');
+    const formattedTanggal = `${day}-${month}-${year}`;
     
-    setJurnals([newJurnal, ...jurnals]);
+    if (editingId) {
+      setJurnals(jurnals.map(j => j.id === editingId ? {
+        ...j,
+        tanggal: formattedTanggal,
+        kelas: kelas || '',
+        mataPelajaran: mapel || '',
+        materi,
+        catatan
+      } : j));
+      setToastMessage("Jurnal mengajar berhasil diperbarui!");
+    } else {
+      const newJurnal = {
+        id: Date.now().toString(),
+        tanggal: formattedTanggal,
+        kelas: kelas || '',
+        mataPelajaran: mapel || '',
+        materi,
+        catatan
+      };
+      
+      setJurnals([newJurnal, ...jurnals]);
+      setToastMessage("Jurnal mengajar berhasil disimpan!");
+    }
+    
+    setTimeout(() => setToastMessage(''), 3000);
     setMateri('');
     setCatatan('');
     setTanggal(new Date().toISOString().split('T')[0]);
+    setEditingId(null);
     setIsModalOpen(false);
-    window.alert("Jurnal mengajar berhasil disimpan!");
+  };
+
+  const handleEdit = (jurnal: any) => {
+    setEditingId(jurnal.id);
+    const [day, month, year] = jurnal.tanggal.split('-');
+    if (day && month && year) {
+      setTanggal(`${year}-${month}-${day}`);
+    }
+    setSelected(`${jurnal.mataPelajaran} - ${jurnal.kelas}`);
+    setMateri(jurnal.materi);
+    setCatatan(jurnal.catatan || '');
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      setJurnals(jurnals.filter(j => j.id !== deleteConfirm));
+      setDeleteConfirm(null);
+      setToastMessage("Jurnal berhasil dihapus!");
+      setTimeout(() => setToastMessage(''), 3000);
+    }
   };
 
   return (
@@ -721,7 +804,13 @@ export function JurnalMengajar() {
           <p className="text-sm text-slate-500 mt-1">Rekap kegiatan belajar mengajar</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingId(null);
+            setMateri('');
+            setCatatan('');
+            setTanggal(new Date().toISOString().split('T')[0]);
+            setIsModalOpen(true);
+          }}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" /> Tambah
@@ -755,9 +844,14 @@ export function JurnalMengajar() {
                     <td className="py-3 px-4">{j.materi}</td>
                     <td className="py-3 px-4 text-slate-500">{j.catatan || '-'}</td>
                     <td className="py-3 px-4 text-center">
-                      <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleEdit(j)} className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors" title="Edit">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(j.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Hapus">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -771,7 +865,7 @@ export function JurnalMengajar() {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-              <h2 className="font-bold text-slate-800">Tambah Jurnal Kelas</h2>
+              <h2 className="font-bold text-slate-800">{editingId ? 'Edit Jurnal Kelas' : 'Tambah Jurnal Kelas'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X className="w-5 h-5" />
               </button>
@@ -841,6 +935,47 @@ export function JurnalMengajar() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+            <div className="p-5 text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Hapus Jurnal?</h3>
+                <p className="text-sm text-slate-500 mt-1">Anda yakin ingin menghapus jurnal ini? Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button 
+                onClick={() => setDeleteConfirm(null)} 
+                className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors text-sm"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors shadow-md shadow-rose-600/20 text-sm"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 z-50 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="text-sm font-medium">{toastMessage}</p>
         </div>
       )}
     </div>
@@ -925,34 +1060,47 @@ export function PerangkatNgajar() {
   const { user } = useAuth();
   const teacherSubjects = getTeacherSubjects();
   
-  // Storage key sync with Kamad
-  const STORAGE_KEY = 'modul_ajar_guru_data';
+  const [modulList, setModulList] = useState<ModulAjarItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [modulList, setModulList] = useState<ModulAjarItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
+  const fetchModul = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient('/get_materi.php');
+      if (res.status === 'success') {
+        const mapped = res.data.map((m: any) => ({
+          id: m.id,
+          teacherName: m.name,
+          role: m.role === 'walas' ? 'Wali Kelas' : 'Guru Mapel',
+          category: m.category,
+          subject: m.subject,
+          className: m.class,
+          title: m.title,
+          date: m.date,
+          status: m.status,
+          driveUrl: m.file_name,
+          description: m.description,
+          objectives: m.objectives || []
+        }));
+        setModulList(mapped);
       }
-    }
-    return DEFAULT_MODUL_AJAR;
-  });
-
-  // Save to localStorage on change
-  const saveModulList = (newList: ModulAjarItem[]) => {
-    setModulList(newList);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+    } catch (e) {
+      console.error('Failed to load materi', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filter tab: "modul_saya" vs "semua"
-  const [filterTab, setFilterTab] = useState<'modul_saya' | 'semua'>('modul_saya');
+  useEffect(() => {
+    fetchModul();
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{id: string, title: string} | null>(null);
 
   // Form Fields
   const [formSubject, setFormSubject] = useState(teacherSubjects[0]?.subjectName || 'Matematika');
@@ -987,7 +1135,7 @@ export function PerangkatNgajar() {
     setIsModalOpen(true);
   };
 
-  const handleSaveForm = (e: React.FormEvent) => {
+  const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formDriveUrl.trim()) {
       window.alert('Mohon lengkapi Judul Modul Ajar dan Link Google Drive!');
@@ -999,63 +1147,59 @@ export function PerangkatNgajar() {
       .map(s => s.trim())
       .filter(Boolean);
 
-    const currentUserRole = user?.role === 'walas' ? 'Wali Kelas' : 'Guru Mapel';
-    const currentCategory = user?.role === 'walas' ? 'wali_kelas' : 'guru_mapel';
+    const payload = {
+      id: editingId,
+      user_id: user?.id,
+      subject: formSubject,
+      class_name: formClass,
+      title: formTitle,
+      description: formDescription || 'Modul Ajar harian disematkan melalui Google Drive.',
+      file_name: formDriveUrl,
+      status: editingId ? (modulList.find(m => m.id === editingId)?.status || 'Sudah Membuat') : 'Sudah Membuat',
+      date: formDate,
+      objectives: objectivesArray.length > 0 ? objectivesArray : ['Siswa mengikuti pembelajaran sesuai materi harian']
+    };
 
-    if (editingId) {
-      const updated = modulList.map(item => {
-        if (item.id === editingId) {
-          return {
-            ...item,
-            subject: formSubject,
-            className: formClass,
-            title: formTitle,
-            date: formDate,
-            driveUrl: formDriveUrl,
-            description: formDescription,
-            objectives: objectivesArray.length > 0 ? objectivesArray : ['Modul Ajar harian pembelajaran'],
-          };
-        }
-        return item;
+    try {
+      await apiClient('/save_materi.php', {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
-      saveModulList(updated);
-      window.alert('Modul Ajar berhasil diperbarui!');
-    } else {
-      const newItem: ModulAjarItem = {
-        id: 'm-' + Date.now(),
-        teacherName: user?.name || 'Ahmad Fazil, S.Pd',
-        role: currentUserRole,
-        category: currentCategory,
-        subject: formSubject,
-        className: formClass,
-        title: formTitle,
-        date: formDate,
-        status: 'Belum Membuat',
-        driveUrl: formDriveUrl,
-        description: formDescription || 'Modul Ajar harian disematkan melalui Google Drive.',
-        objectives: objectivesArray.length > 0 ? objectivesArray : ['Siswa mengikuti pembelajaran sesuai materi harian'],
-      };
-      saveModulList([newItem, ...modulList]);
-      window.alert('Modul Ajar berhasil disematkan dan siap dipantau Kepala Madrasah!');
+      window.alert(editingId ? 'Modul Ajar berhasil diperbarui!' : 'Modul Ajar berhasil disematkan dan siap dipantau Kepala Madrasah!');
+      setIsModalOpen(false);
+      fetchModul();
+    } catch (err) {
+      console.error(err);
+      window.alert('Gagal menyimpan perangkat ngajar');
     }
-
-    setIsModalOpen(false);
   };
 
   const handleDelete = (id: string, title: string) => {
-    if (window.confirm(`Hapus Modul Ajar "${title}"?`)) {
-      const updated = modulList.filter(item => item.id !== id);
-      saveModulList(updated);
+    setDeleteConfirm({ id, title });
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirm) {
+      try {
+        await apiClient('/delete_materi.php', {
+          method: 'POST',
+          body: JSON.stringify({ id: deleteConfirm.id })
+        });
+        setDeleteConfirm(null);
+        fetchModul();
+      } catch(err) {
+        console.error(err);
+        window.alert('Gagal menghapus perangkat ngajar');
+      }
     }
   };
 
   // Filter logic
   const myName = user?.name || 'Ahmad Fazil, S.Pd';
   const filteredList = modulList.filter(item => {
-    if (filterTab === 'modul_saya') {
-      const isMine = item.teacherName.toLowerCase().includes(myName.toLowerCase()) || item.teacherName.includes('Ahmad');
-      if (!isMine) return false;
-    }
+    const isMine = item.teacherName.toLowerCase().includes(myName.toLowerCase()) || item.teacherName.includes('Ahmad');
+    if (!isMine) return false;
+    
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -1089,30 +1233,7 @@ export function PerangkatNgajar() {
       {/* Filter Header & Search */}
       <Card className="border-slate-200/80 shadow-xs">
         <CardContent className="p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
-              <button
-                onClick={() => setFilterTab('modul_saya')}
-                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-extrabold rounded-lg transition-all ${
-                  filterTab === 'modul_saya'
-                    ? 'bg-white text-emerald-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Modul Saya
-              </button>
-              <button
-                onClick={() => setFilterTab('semua')}
-                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-extrabold rounded-lg transition-all ${
-                  filterTab === 'semua'
-                    ? 'bg-white text-emerald-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Semua Guru ({modulList.length})
-              </button>
-            </div>
-
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -1137,9 +1258,7 @@ export function PerangkatNgajar() {
               </div>
               <p className="text-sm font-bold text-slate-700">Belum Ada Modul Ajar Harian</p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {filterTab === 'modul_saya'
-                  ? 'Anda belum menyematkan link Google Drive Modul Ajar. Klik tombol di atas untuk menambahkannya.'
-                  : 'Tidak ditemukan modul ajar dengan kata kunci tersebut.'}
+                Anda belum menyematkan link Google Drive Modul Ajar. Klik tombol di atas untuk menambahkannya.
               </p>
             </CardContent>
           </Card>
@@ -1216,24 +1335,22 @@ export function PerangkatNgajar() {
                       <ExternalLink className="w-3.5 h-3.5" /> Buka Drive
                     </a>
 
-                    {(item.teacherName.includes('Ahmad') || filterTab === 'modul_saya') && (
-                      <>
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                          title="Edit Modul"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id, item.title)}
-                          className="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
-                          title="Hapus Modul"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
+                    <>
+                      <button
+                        onClick={() => handleOpenEditModal(item)}
+                        className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                        title="Edit Modul"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id, item.title)}
+                        className="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition-all cursor-pointer"
+                        title="Hapus Modul"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   </div>
                 </div>
               </CardContent>
@@ -1348,6 +1465,31 @@ export function PerangkatNgajar() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="p-5 text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Hapus Modul Ajar?</h3>
+                <p className="text-sm text-slate-500 mt-1">Anda yakin ingin menghapus <span className="font-bold text-slate-700">"{deleteConfirm.title}"</span>? Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1 font-bold">
+                Batal
+              </Button>
+              <Button onClick={confirmDelete} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold">
+                Ya, Hapus
+              </Button>
+            </div>
           </div>
         </div>
       )}

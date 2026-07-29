@@ -63,25 +63,27 @@ export function Sidebar() {
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
         { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
         { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar' },
-        { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas' },
         { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
         { to: '/laporan', icon: FileText, label: 'Laporan' },
         { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur' },
         { to: '/leave', icon: ClipboardList, label: 'Form Perizinan' },
         { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru' },
       ];
-      if (teachesXII) guruLinks.splice(9, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      if (teachesXII) {
+        guruLinks.splice(8, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas' });
+        guruLinks.splice(9, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      }
       return guruLinks;
     } else if (user?.role === 'walas') {
       const walasLinks = [
         { to: '/', icon: Home, label: 'Beranda' },
         { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
+        { to: '/users', icon: UserCheck, label: 'Akun Pengguna' },
         { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
         { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
         { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
         { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
-        { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas' },
         { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
         { to: '/laporan', icon: FileText, label: 'Laporan' },
         { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi' },
@@ -93,7 +95,10 @@ export function Sidebar() {
         { to: '/leave', icon: ClipboardList, label: 'Form Perizinan' },
         { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru' },
       ];
-      if (teachesXII) walasLinks.splice(8, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      if (teachesXII) {
+        walasLinks.splice(8, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas' });
+        walasLinks.splice(9, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      }
       return walasLinks;
     } else if (user?.role === 'admin') {
       return [
@@ -143,12 +148,17 @@ export function Sidebar() {
         { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur' },
       ];
     } else if (user?.role === 'siswa') {
-      return [
+      const siswaLinks = [
         { to: '/', icon: Home, label: 'Beranda' },
-        { to: '/lms-tugas', icon: ClipboardList, label: 'Materi & Tugas' },
-        { to: '/cbt', icon: FileText, label: 'Ujian CBT' },
-        { to: '/siswa-nilai', icon: Edit3, label: 'Nilai & Rapor' },
       ];
+      if (teachesXII) {
+        siswaLinks.push({ to: '/lms-tugas', icon: ClipboardList, label: 'Materi & Tugas' });
+      }
+      siswaLinks.push(
+        { to: '/cbt', icon: FileText, label: 'Ujian CBT' },
+        { to: '/siswa-nilai', icon: Edit3, label: 'Nilai & Rapor' }
+      );
+      return siswaLinks;
     } else if (user?.role === 'wakakurikulum') {
       return [
         { to: '/', icon: Home, label: 'Beranda' },
@@ -191,6 +201,7 @@ export function Sidebar() {
       const quranLinks = [
         { to: '/', icon: Home, label: 'Beranda' },
         { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
+        { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar' },
         { to: '/absensi', icon: CheckSquare, label: 'Absensi Mapel' },
         { to: '/guru-quran/dhuha', icon: Heart, label: 'Absensi Dhuha' },
         { to: '/guru-quran/laporan', icon: FileBarChart, label: 'Laporan Dhuha' },
@@ -218,7 +229,7 @@ export function Sidebar() {
         <div className="flex items-center space-x-3">
           <img src="https://lh3.googleusercontent.com/d/1zjkq3eRW8Q_BQSZhAbb6gMgcVwPHAQcc" alt="Logo" className="h-10 w-auto max-w-[120px] object-contain shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
           <div className="leading-none">
-            <h1 className="font-bold text-sm uppercase tracking-wider line-clamp-2">Managemen Madrasah<br/>MAS Al-Ihsan IBS Riau</h1>
+            <h1 className="font-bold text-sm uppercase tracking-wider line-clamp-2">SIKAT MA AL-IHSAN<br/>IBS Riau</h1>
             <span className="text-[10px] text-emerald-400 font-medium tracking-widest mt-1 inline-block">SYSTEM v1.0</span>
           </div>
         </div>
