@@ -45,19 +45,6 @@ export function AdminTermSettings() {
     fetchTerms();
   }, []);
 
-  // Remove old localStorage block
-  /*
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mockAcademicTerms');
-      if (stored) {
-        try { return JSON.parse(stored); } catch (e) {}
-      }
-    }
-    return [];
-  });
-
-  */
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);

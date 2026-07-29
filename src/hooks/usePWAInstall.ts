@@ -13,45 +13,60 @@ export function usePWAInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-      setIsInstalled(true);
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+        setIsInstalled(true);
+      }
+
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        setInstallPrompt(e as BeforeInstallPromptEvent);
+        setIsInstallable(true);
+      };
+
+      const handleAppInstalled = () => {
+        setIsInstallable(false);
+        setIsInstalled(true);
+        setInstallPrompt(null);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.addEventListener('appinstalled', handleAppInstalled);
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
     }
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-      setIsInstallable(true);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstallable(false);
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
   }, []);
 
-  const promptInstall = async () => {
-    if (!installPrompt) return;
-    try {
-      await installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstallable(false);
+  const handleInstallClick = async () => {
+    if (installPrompt) {
+      try {
+        await installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstallable(false);
+          setInstallPrompt(null);
+        }
+      } catch (err) {
+        console.error('PWA Installation failed', err);
+        setShowGuideModal(true);
       }
-    } catch (err) {
-      console.error('PWA Installation failed', err);
+    } else {
+      setShowGuideModal(true);
     }
   };
 
-  return { isInstallable, isInstalled, promptInstall };
+  return {
+    isInstallable,
+    isInstalled,
+    installPrompt,
+    promptInstall: handleInstallClick,
+    showGuideModal,
+    setShowGuideModal
+  };
 }

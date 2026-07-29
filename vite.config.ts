@@ -80,6 +80,12 @@ export default defineConfig(() => {
             copyFolderRecursive(src, dest);
             console.log('Successfully copied api folder to dist/api');
           }
+          const manifestWeb = path.resolve(process.cwd(), 'dist/manifest.webmanifest');
+          const manifestJson = path.resolve(process.cwd(), 'dist/manifest.json');
+          if (fs.existsSync(manifestWeb)) {
+            fs.copyFileSync(manifestWeb, manifestJson);
+            console.log('Successfully generated dist/manifest.json fallback');
+          }
         }
       }
     ],
