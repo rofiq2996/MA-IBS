@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 dotenv.config();
 
@@ -43,6 +44,21 @@ try {
   console.error('Failed to initialize database pool:', error);
 }
 
+async function testPoolAndInit() {
+  if (pool) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('Database connected successfully.');
+      await ensureDatabaseColumns();
+    } catch (e) {
+      console.error('Database connection failed, falling back to mock mode:', e.message);
+      pool = undefined;
+    }
+  }
+}
+
+
+
 async function ensureDatabaseColumns() {
   if (pool) {
     try {
@@ -74,7 +90,7 @@ async function startServer() {
   app.use(express.json());
 
   // Ensure database columns on start
-  await ensureDatabaseColumns();
+  await testPoolAndInit();
 
   // API Routes
 
@@ -87,6 +103,16 @@ async function startServer() {
   ];
 
   
+
+  // PROXY to mmmaibs.com in development to bypass CORS
+  if (process.env.USE_REMOTE_API === 'true' && false) {
+    app.use('/api', createProxyMiddleware({
+      target: 'https://mmmaibs.com',
+      changeOrigin: true,
+      secure: false,
+    }));
+  } else {
+
   app.all('/api/crud.php', (req, res, next) => {
     const table = req.query.table;
     const id = req.query.id;
@@ -396,7 +422,13 @@ async function startServer() {
       res.json({ users, students, classes, subjects });
     } catch (error) {
       console.error('Database query error:', error);
-      res.status(500).json({ error: 'Failed to sync data' });
+      // Fallback to mock data on connection failure
+      return res.json({
+        users: dbFallback['users'] || [],
+        students: dbFallback['students'] || [],
+        classes: dbFallback['classes'] || [],
+        subjects: dbFallback['subjects'] || []
+      });
     }
   });
 
@@ -538,6 +570,7 @@ async function startServer() {
 
 
   // Vite middleware for development
+  }
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-export const API_URL = (typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.protocol === 'file:' || window.location.protocol === 'capacitor:')) ? 'https://www.mmmaibs.com/api' : '/api';
+export const API_URL = '/api';
 
 export const apiClient = async (endpoint: string, options: RequestInit = {}) => {
   const url = endpoint === '/sync' ? `${API_URL}/sync.php` : `${API_URL}${endpoint}`;
