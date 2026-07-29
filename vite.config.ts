@@ -28,6 +28,9 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        devOptions: {
+          enabled: true
+        },
         manifest: {
           name: 'SIKAT MA AL-IHSAN',
           short_name: 'SIKAT Al-Ihsan',
