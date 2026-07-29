@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { apiClient } from '../../lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function TermSwitcher() {
@@ -8,41 +9,39 @@ export function TermSwitcher() {
   const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
   const termMenuRef = useRef<HTMLDivElement>(null);
 
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      let parsedTerms: any[] = [];
-      const stored = localStorage.getItem('mockAcademicTerms');
-      if (stored) {
-        try {
-          parsedTerms = JSON.parse(stored);
-        } catch (e) {
-          console.error(e);
+    async function loadTerms() {
+      try {
+        const data = await apiClient('/crud.php?table=academic_terms');
+        const parsedTerms = data.map((t: any) => ({
+          id: String(t.id),
+          year: t.year,
+          semester: t.semester,
+          isActive: Boolean(t.is_active)
+        }));
+        setTerms(parsedTerms);
+        
+        const savedId = localStorage.getItem('selectedAcademicTermId');
+        if (savedId && parsedTerms.find((t: any) => t.id === savedId)) {
+          setSelectedTermId(savedId);
+        } else {
+          const active = parsedTerms.find((t: any) => t.isActive);
+          if (active) {
+            setSelectedTermId(active.id);
+            localStorage.setItem('selectedAcademicTermId', active.id);
+          } else if (parsedTerms.length > 0) {
+            setSelectedTermId(parsedTerms[0].id);
+            localStorage.setItem('selectedAcademicTermId', parsedTerms[0].id);
+          }
         }
-      }
-      
-      if (parsedTerms.length === 0) {
-        parsedTerms = [
-           { id: '1', year: '2026/2027', semester: 'Ganjil', isActive: true },
-           { id: '2', year: '2026/2027', semester: 'Genap', isActive: false }
-        ];
-        localStorage.setItem('mockAcademicTerms', JSON.stringify(parsedTerms));
-      }
-      
-      setTerms(parsedTerms);
-      
-      const savedId = localStorage.getItem('selectedAcademicTermId');
-      if (savedId) {
-        setSelectedTermId(savedId);
-      } else {
-        const active = parsedTerms.find((t: any) => t.isActive);
-        if (active) {
-          setSelectedTermId(active.id);
-        } else if (parsedTerms.length > 0) {
-          setSelectedTermId(parsedTerms[0].id);
-        }
+      } catch (e) {
+        console.error("Failed to load academic terms", e);
       }
     }
+    loadTerms();
   }, []);
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -1,3 +1,4 @@
+import { apiClient } from '../lib/apiClient';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -31,7 +32,7 @@ export function AdminKenaikanKelas() {
     );
   };
 
-  const handleKenaikan = () => {
+  const handleKenaikan = async () => {
     if (!sourceClass) {
       window.alert("Pilih kelas asal terlebih dahulu.");
       return;
@@ -50,11 +51,19 @@ export function AdminKenaikanKelas() {
     }
 
     if (window.confirm(`Anda yakin ingin memindahkan ${selectedStudents.length} siswa ke ${targetClass === 'LULUS' ? 'Status Lulus' : 'Tingkat ' + targetClass}?`)) {
-      const storedTerms = JSON.parse(localStorage.getItem('mockAcademicTerms') || '[]');
-      const selectedTermId = localStorage.getItem('selectedAcademicTermId');
-      let activeTerm = selectedTermId ? storedTerms.find((t: any) => t.id === selectedTermId) : null;
-      if (!activeTerm) activeTerm = storedTerms.find((t: any) => t.isActive);
-      const academicYear = activeTerm ? `${activeTerm.year} (${activeTerm.semester})` : '2026/2027';
+      
+      let academicYear = '2026/2027';
+      try {
+        const termsData = await apiClient('/crud.php?table=academic_terms');
+        const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+        let activeTerm = null;
+        if (selectedTermId) activeTerm = termsData.find((t: any) => String(t.id) === selectedTermId);
+        if (!activeTerm) activeTerm = termsData.find((t: any) => Boolean(t.is_active));
+        if (activeTerm) academicYear = `${activeTerm.year} (${activeTerm.semester})`;
+      } catch (e) {
+        console.error("Failed to load academic terms", e);
+      }
+
 
       const updatedStudents = students.map(s => {
         if (selectedStudents.includes(s.id)) {

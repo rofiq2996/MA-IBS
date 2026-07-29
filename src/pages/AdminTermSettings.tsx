@@ -4,6 +4,7 @@ import {
   Calendar, CalendarDays, Plus, Check, X, AlertCircle, Trash2, Edit2, ToggleLeft, ToggleRight, Settings, ArrowUpCircle 
 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { apiClient } from '../lib/apiClient';
 
 interface AcademicTerm {
   id: string;
@@ -16,7 +17,36 @@ interface AcademicTerm {
 }
 
 export function AdminTermSettings() {
-  const [terms, setTerms] = useState<AcademicTerm[]>(() => {
+  const [terms, setTerms] = useState<AcademicTerm[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTerms = async () => {
+    try {
+      const res = await apiClient('/crud.php?table=academic_terms');
+      // Map snake_case to camelCase and supply defaults
+      setTerms(res.map((t: any) => ({
+        id: t.id.toString(),
+        year: t.year,
+        semester: t.semester,
+        isActive: Boolean(t.is_active),
+        startDate: t.start_date || '2025-07-15',
+        endDate: t.end_date || '2025-12-15',
+        totalWeeks: t.total_weeks || 20
+      })));
+    } catch(e) {
+      console.error(e);
+      setFeedback({ type: 'error', message: 'Gagal memuat tahun ajaran' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTerms();
+  }, []);
+
+  // Remove old localStorage block
+  /*
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('mockAcademicTerms');
       if (stored) {
@@ -26,9 +56,7 @@ export function AdminTermSettings() {
     return [];
   });
 
-  useEffect(() => {
-    localStorage.setItem('mockAcademicTerms', JSON.stringify(terms));
-  }, [terms]);
+  */
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -70,16 +98,29 @@ export function AdminTermSettings() {
     setIsModalOpen(true);
   };
 
-  const handleActivate = (id: string) => {
-    const updated = terms.map(t => {
-      if (t.id === id) {
-        return { ...t, isActive: true };
-      }
-      return { ...t, isActive: false };
-    });
-    setTerms(updated);
-    setFeedback({ type: 'success', message: 'Tahun ajaran dan semester aktif berhasil diubah.' });
+  
+  const handleActivate = async (id: string) => {
+    try {
+      // Set all terms to false
+      await Promise.all(terms.map(t => 
+        apiClient(`/crud.php?table=academic_terms&id=${t.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ is_active: 0 })
+        })
+      ));
+      // Set selected term to true
+      await apiClient(`/crud.php?table=academic_terms&id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_active: 1 })
+      });
+      fetchTerms();
+      setFeedback({ type: 'success', message: 'Tahun ajaran dan semester aktif berhasil diubah.' });
+    } catch (e) {
+      console.error(e);
+      setFeedback({ type: 'error', message: 'Gagal mengubah tahun ajaran.' });
+    }
   };
+
 
   const handlePromoteStudents = () => {
     if (!window.confirm('PERINGATAN: Aksi ini akan memajukan seluruh siswa ke tingkat kelas berikutnya secara otomatis (Misal: Kelas X menjadi XI, XI menjadi XII, dan XII menjadi Lulus). Aksi ini sebaiknya hanya dilakukan sekali setiap awal tahun ajaran baru. Apakah Anda yakin?')) {
@@ -130,38 +171,43 @@ export function AdminTermSettings() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!year.trim() || !startDate || !endDate || Number(totalWeeks) <= 0) {
       setFeedback({ type: 'error', message: 'Silakan isi formulir dengan lengkap.' });
       return;
     }
-
-    if (editingId) {
-      setTerms(terms.map(t => t.id === editingId ? {
-        ...t,
-        year: year.trim(),
-        semester,
-        startDate,
-        endDate,
-        totalWeeks: Number(totalWeeks),
-      } : t));
-      setFeedback({ type: 'success', message: 'Tahun ajaran berhasil diperbarui.' });
-    } else {
-      const newTerm: AcademicTerm = {
-        id: String(Date.now()),
-        year: year.trim(),
-        semester,
-        startDate,
-        endDate,
-        totalWeeks: Number(totalWeeks),
-        isActive: terms.length === 0 // Active by default if it's the first one
-      };
-      setTerms([...terms, newTerm]);
-      setFeedback({ type: 'success', message: 'Tahun ajaran dan semester baru berhasil dibuat.' });
+    const payload = {
+      year: year.trim(),
+      semester,
+      is_active: terms.length === 0 ? 1 : 0
+    };
+    try {
+      if (editingId) {
+        await apiClient(`/crud.php?table=academic_terms&id=${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            year: year.trim(),
+            semester
+          })
+        });
+        setFeedback({ type: 'success', message: 'Tahun ajaran berhasil diperbarui.' });
+      } else {
+        await apiClient('/crud.php?table=academic_terms', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        setFeedback({ type: 'success', message: 'Tahun ajaran dan semester baru berhasil dibuat.' });
+      }
+      setIsModalOpen(false);
+      fetchTerms();
+    } catch (e) {
+      console.error(e);
+      setFeedback({ type: 'error', message: 'Gagal menyimpan tahun ajaran.' });
     }
-    setIsModalOpen(false);
   };
+
 
   const confirmDelete = () => {
     if (deleteConfirmId) {

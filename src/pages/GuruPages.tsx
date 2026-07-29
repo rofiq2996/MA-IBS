@@ -530,23 +530,20 @@ export function InputNilai() {
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mockAcademicTerms');
-      if (stored) {
-        try {
-          const terms = JSON.parse(stored);
+      
+      apiClient('/crud.php?table=academic_terms')
+        .then(data => {
           const selectedTermId = localStorage.getItem('selectedAcademicTermId');
           let activeTerm = null;
           if (selectedTermId) {
-            activeTerm = terms.find((t: any) => t.id === selectedTermId);
+            activeTerm = data.find((t: any) => String(t.id) === selectedTermId);
           }
           if (!activeTerm) {
-            activeTerm = terms.find((t: any) => t.isActive);
+            activeTerm = data.find((t: any) => Boolean(t.is_active));
           }
-          if (activeTerm && activeTerm.semester) {
-            setSemester(activeTerm.semester);
-          }
-        } catch (e) {}
-      }
+          if (activeTerm) setSemester(activeTerm.semester);
+        })
+        .catch(console.error);
     }
   }, []);
 

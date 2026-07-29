@@ -89,20 +89,27 @@ export function DashboardAdmin() {
   const [activeTermSemester, setActiveTermSemester] = useState<string>('-');
 
   useEffect(() => {
-    const stored = localStorage.getItem('mockAcademicTerms');
-    if (stored) {
-      try {
-        const terms = JSON.parse(stored);
-        const activeTerm = terms.find((t: any) => t.isActive);
+    
+    apiClient('/crud.php?table=academic_terms')
+      .then(data => {
+        const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+        let activeTerm = null;
+        if (selectedTermId) {
+          activeTerm = data.find((t: any) => String(t.id) === selectedTermId);
+        }
+        if (!activeTerm) {
+          activeTerm = data.find((t: any) => Boolean(t.is_active));
+        }
         if (activeTerm) {
           setActiveTermName(activeTerm.year || '-');
           setActiveTermSemester(activeTerm.semester || '-');
-        } else if (terms.length > 0) {
-          setActiveTermName(terms[0].year || '-');
-          setActiveTermSemester(terms[0].semester || '-');
+        } else if (data.length > 0) {
+          setActiveTermName(data[0].year || '-');
+          setActiveTermSemester(data[0].semester || '-');
         }
-      } catch (e) {}
-    }
+      })
+      .catch(console.error);
+
   }, []);
 
   useEffect(() => {
