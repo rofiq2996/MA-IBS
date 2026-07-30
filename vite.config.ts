@@ -28,7 +28,9 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        devOptions: { enabled: true, type: 'classic' },
+        devOptions: {
+          enabled: true
+        },
         manifest: {
           name: 'SIKAT MA AL-IHSAN',
           short_name: 'SIKAT Al-Ihsan',
@@ -41,28 +43,28 @@ export default defineConfig(() => {
           orientation: 'portrait',
           icons: [
             {
-              src: '/icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any'
+              src: "/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any"
             },
             {
-              src: '/icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable'
+              src: "/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable"
             },
             {
-              src: '/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any'
+              src: "/icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any"
             },
             {
-              src: '/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable'
+              src: "/icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable"
             }
           ]
         },
@@ -79,12 +81,6 @@ export default defineConfig(() => {
           if (fs.existsSync(src)) {
             copyFolderRecursive(src, dest);
             console.log('Successfully copied api folder to dist/api');
-          }
-          const manifestWeb = path.resolve(process.cwd(), 'dist/manifest.webmanifest');
-          const manifestJson = path.resolve(process.cwd(), 'dist/manifest.json');
-          if (fs.existsSync(manifestWeb)) {
-            fs.copyFileSync(manifestWeb, manifestJson);
-            console.log('Successfully generated dist/manifest.json fallback');
           }
         }
       }

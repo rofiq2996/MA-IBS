@@ -22,11 +22,5 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  },
-  "exclude": [
-    "android",
-    "dist",
-    "dev-dist",
-    "node_modules"
-  ]
+  }
 }

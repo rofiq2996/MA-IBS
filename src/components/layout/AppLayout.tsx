@@ -11,13 +11,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserAvatar } from '../ui/UserAvatar';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { Download } from 'lucide-react';
-import { apiClient } from '../../lib/apiClient';
-import { PWAInstallGuideModal } from '../ui/PWAInstallGuideModal';
 
 export function AppLayout() {
   const { user, logout, switchRole, updateUser } = useAuth();
   const navigate = useNavigate();
-  const { isInstallable, isInstalled, promptInstall, showGuideModal, setShowGuideModal, installPrompt } = usePWAInstall();
+  const { isInstallable, promptInstall } = usePWAInstall();
   const location = useLocation();
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
@@ -30,35 +28,41 @@ export function AppLayout() {
   const termMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadTerms() {
-      try {
-        const data = await apiClient('/crud.php?table=academic_terms');
-        if (Array.isArray(data) && data.length > 0) {
-          const parsedTerms = data.map((t: any) => ({
-            id: String(t.id),
-            year: t.year,
-            semester: t.semester,
-            isActive: Boolean(t.is_active)
-          }));
-          setTerms(parsedTerms);
-          
-          const savedId = localStorage.getItem('selectedAcademicTermId');
-          if (savedId && parsedTerms.find((t: any) => t.id === savedId)) {
-            setSelectedTermId(savedId);
-          } else {
-            const active = parsedTerms.find((t: any) => t.isActive);
-            if (active) {
-              setSelectedTermId(active.id);
-            } else {
-              setSelectedTermId(parsedTerms[0].id);
-            }
-          }
+    if (typeof window !== 'undefined') {
+      let parsedTerms = [];
+      const stored = localStorage.getItem('mockAcademicTerms');
+      
+      if (stored) {
+        try {
+          parsedTerms = JSON.parse(stored);
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error("Failed to fetch academic terms in AppLayout:", e);
+      }
+      
+      if (parsedTerms.length === 0) {
+        // Fallback default terms
+        parsedTerms = [
+           { id: '1', year: '2026/2027', semester: 'Ganjil', isActive: true },
+           { id: '2', year: '2026/2027', semester: 'Genap', isActive: false }
+        ];
+        localStorage.setItem('mockAcademicTerms', JSON.stringify(parsedTerms));
+      }
+      
+      setTerms(parsedTerms);
+      
+      const savedId = localStorage.getItem('selectedAcademicTermId');
+      if (savedId) {
+        setSelectedTermId(savedId);
+      } else {
+        const active = parsedTerms.find((t: any) => t.isActive);
+        if (active) {
+          setSelectedTermId(active.id);
+        } else if (parsedTerms.length > 0) {
+          setSelectedTermId(parsedTerms[0].id);
+        }
       }
     }
-    loadTerms();
   }, []);
 
   const activeTerm = terms.find(t => t.id === selectedTermId) || terms.find(t => t.isActive) || terms[0];
@@ -230,24 +234,24 @@ export function AppLayout() {
 
             
             <div className="flex items-center space-x-2 sm:pl-4 sm:border-l border-slate-200">
-              {!isInstalled && (
-                <>
-                  <button
-                    onClick={promptInstall}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full text-xs font-bold transition-colors mr-2 cursor-pointer"
-                    title="Install Aplikasi PWA"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Install App
-                  </button>
-                  <button
-                    onClick={promptInstall}
-                    className="sm:hidden flex items-center justify-center w-8 h-8 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full transition-colors mr-1 cursor-pointer"
-                    title="Install Aplikasi PWA"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                </>
+              {isInstallable && (
+                <button
+                  onClick={promptInstall}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full text-xs font-bold transition-colors mr-2 cursor-pointer"
+                  title="Install Aplikasi"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Install App
+                </button>
+              )}
+              {isInstallable && (
+                <button
+                  onClick={promptInstall}
+                  className="sm:hidden flex items-center justify-center w-8 h-8 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-full transition-colors mr-1 cursor-pointer"
+                  title="Install Aplikasi"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
               )}
               <button onClick={() => navigate('/notifications')} className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 cursor-pointer text-slate-600 transition-colors">
                 <Bell className="w-5 h-5" />
@@ -269,14 +273,6 @@ export function AppLayout() {
         </div>
       </main>
       <MobileNav />
-
-      {/* PWA Install Guide Modal */}
-      <PWAInstallGuideModal
-        isOpen={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
-        onNativePrompt={promptInstall}
-        hasNativePrompt={Boolean(installPrompt)}
-      />
 
       {/* Exit Confirmation Dialog Modal */}
       <AnimatePresence>
