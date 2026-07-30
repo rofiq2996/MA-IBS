@@ -50,6 +50,7 @@ export function InputJadwal() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [rombel, setRombel] = useState(classes[0]?.name || '');
   const [hari, setHari] = useState('Senin');
@@ -161,10 +162,8 @@ export function InputJadwal() {
     setIsModalOpen(true);
   };
   
-  const handleDelete = (id: string) => {
-    if (window.confirm('Hapus jadwal ini?')) {
-      setSchedules(schedules.filter(s => s.id !== id));
-    }
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id);
   };
   
   const handleSave = () => {
@@ -292,7 +291,7 @@ export function InputJadwal() {
                           <button onClick={() => openEdit(s)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(s.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors" title="Hapus">
+                          <button onClick={() => handleDeleteClick(s.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors" title="Hapus">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -324,7 +323,7 @@ export function InputJadwal() {
                       <button onClick={() => openEdit(s)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(s.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors" title="Hapus">
+                      <button onClick={() => handleDeleteClick(s.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors" title="Hapus">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -437,6 +436,46 @@ export function InputJadwal() {
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors text-sm flex items-center gap-2"
               >
                 <Check className="w-4 h-4" /> Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-rose-500" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-800 mb-2">Hapus Jadwal?</h2>
+              <p className="text-sm text-slate-500">
+                Apakah Anda yakin ingin menghapus jadwal ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setDeletingId(null)}
+                className="flex-1 px-4 py-2 text-slate-600 hover:bg-slate-200 font-bold rounded-lg transition-colors text-sm"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await apiClient(`/crud.php?table=schedules&id=${deletingId}`, { method: 'DELETE' });
+                    setSchedules(schedules.filter(s => s.id !== deletingId));
+                  } catch (err) {
+                    console.error(err);
+                    window.alert('Gagal menghapus jadwal');
+                  } finally {
+                    setDeletingId(null);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg transition-colors text-sm"
+              >
+                Hapus
               </button>
             </div>
           </div>

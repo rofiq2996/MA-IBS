@@ -9,13 +9,58 @@ export function AdminCalendar() {
   const canEdit = user?.role === 'admin' || user?.role === 'wakakurikulum';
 
   const [agenda, setAgenda] = useState<{id: number, date: string, event: string, type: string, color?: string}[]>(() => {
+    let initialAgenda = [];
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('mockAgenda');
       if (stored) {
-        try { return JSON.parse(stored); } catch (e) {}
+        try { initialAgenda = JSON.parse(stored); } catch (e) {}
       }
     }
-    return [];
+    
+    // Default holidays
+    const holidays = [
+      { date: '2026-01-01', event: 'Tahun Baru 2026 Masehi', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-02-18', event: 'Isra Mikraj Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-03', event: 'Hari Suci Nyepi Tahun Baru Saka 1948', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-20', event: 'Hari Raya Idul Fitri 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-21', event: 'Hari Raya Idul Fitri 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-04-03', event: 'Wafat Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-01', event: 'Hari Buruh Internasional', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-14', event: 'Kenaikan Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-27', event: 'Hari Raya Idul Adha 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-31', event: 'Hari Raya Waisak 2570 BE', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-06-01', event: 'Hari Lahir Pancasila', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-06-16', event: 'Tahun Baru Islam 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-08-17', event: 'Hari Kemerdekaan Republik Indonesia', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-08-26', event: 'Maulid Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-12-25', event: 'Hari Raya Natal', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-01-01', event: 'Tahun Baru 2027 Masehi', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-02-07', event: 'Isra Mikraj Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-09', event: 'Hari Raya Idul Fitri 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-10', event: 'Hari Raya Idul Fitri 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-26', event: 'Wafat Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-05-01', event: 'Hari Buruh Internasional', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-05-16', event: 'Hari Raya Idul Adha 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-06-01', event: 'Hari Lahir Pancasila', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-06-06', event: 'Tahun Baru Islam 1449 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-08-15', event: 'Maulid Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-08-17', event: 'Hari Kemerdekaan Republik Indonesia', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-12-25', event: 'Hari Raya Natal', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+    ];
+    
+    let added = false;
+    holidays.forEach(h => {
+      if (!initialAgenda.find((a: any) => a.date === h.date && a.event === h.event)) {
+        initialAgenda.push({ id: Date.now() + Math.random(), ...h });
+        added = true;
+      }
+    });
+
+    if (added && typeof window !== 'undefined') {
+      localStorage.setItem('mockAgenda', JSON.stringify(initialAgenda));
+    }
+    
+    return initialAgenda;
   });
 
   useEffect(() => {
@@ -113,6 +158,55 @@ export function AdminCalendar() {
     setIsModalOpen(false);
   };
 
+  const generateHolidays = () => {
+    const holidays = [
+      { date: '2026-01-01', event: 'Tahun Baru 2026 Masehi', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-02-18', event: 'Isra Mikraj Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-03', event: 'Hari Suci Nyepi Tahun Baru Saka 1948', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-20', event: 'Hari Raya Idul Fitri 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-03-21', event: 'Hari Raya Idul Fitri 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-04-03', event: 'Wafat Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-01', event: 'Hari Buruh Internasional', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-14', event: 'Kenaikan Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-27', event: 'Hari Raya Idul Adha 1447 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-05-31', event: 'Hari Raya Waisak 2570 BE', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-06-01', event: 'Hari Lahir Pancasila', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-06-16', event: 'Tahun Baru Islam 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-08-17', event: 'Hari Kemerdekaan Republik Indonesia', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-08-26', event: 'Maulid Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2026-12-25', event: 'Hari Raya Natal', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-01-01', event: 'Tahun Baru 2027 Masehi', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-02-07', event: 'Isra Mikraj Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-09', event: 'Hari Raya Idul Fitri 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-10', event: 'Hari Raya Idul Fitri 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-03-26', event: 'Wafat Yesus Kristus', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-05-01', event: 'Hari Buruh Internasional', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-05-16', event: 'Hari Raya Idul Adha 1448 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-06-01', event: 'Hari Lahir Pancasila', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-06-06', event: 'Tahun Baru Islam 1449 Hijriah', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-08-15', event: 'Maulid Nabi Muhammad SAW', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-08-17', event: 'Hari Kemerdekaan Republik Indonesia', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+      { date: '2027-12-25', event: 'Hari Raya Natal', type: 'Libur Nasional', color: 'bg-red-100 text-red-800' },
+    ];
+
+    let newAgenda = [...agenda];
+    let count = 0;
+    
+    holidays.forEach(h => {
+      if (!newAgenda.find(a => a.date === h.date && a.event === h.event)) {
+        newAgenda.push({ id: Date.now() + Math.random(), ...h });
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      setAgenda(newAgenda);
+      window.alert(`${count} hari libur nasional & PHBI berhasil ditambahkan.`);
+    } else {
+      window.alert(`Hari libur nasional & PHBI sudah ada di kalender.`);
+    }
+  };
+
   const days = [];
   for (let i = 0; i < firstDay; i++) {
     days.push(<div key={`empty-${i}`} className="p-1 sm:p-2 border-b border-r border-slate-100 bg-slate-50/50 min-h-[50px] sm:min-h-[100px] md:min-h-[120px]"></div>);
@@ -124,16 +218,31 @@ export function AdminCalendar() {
     const dString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
     const dayAgenda = agenda.filter(a => a.date === dString);
     
+    const isHoliday = dayAgenda.some(a => a.type === 'Libur Nasional' || a.type === 'Libur' || a.event.toLowerCase().includes('libur'));
+    const isFriday = new Date(year, month, i).getDay() === 5;
+    const isSunday = new Date(year, month, i).getDay() === 0;
+    
+    let cellBg = 'hover:bg-slate-50';
+    let dateColor = 'text-slate-700 ' + (canEdit ? 'group-hover:text-emerald-600' : '');
+
+    if (todayString === dString) {
+      dateColor = 'bg-emerald-600 text-white';
+    } else if (isHoliday || isSunday) {
+      cellBg = 'bg-red-50 hover:bg-red-100';
+      dateColor = 'text-red-700 ' + (canEdit ? 'group-hover:text-red-800' : '');
+    } else if (isFriday) {
+      cellBg = 'bg-emerald-50 hover:bg-emerald-100';
+      dateColor = 'text-emerald-700 ' + (canEdit ? 'group-hover:text-emerald-800' : '');
+    }
+
     days.push(
       <div 
         key={`day-${i}`} 
-        className={`p-1 sm:p-2 border-b border-r border-slate-100 min-h-[50px] sm:min-h-[100px] md:min-h-[120px] hover:bg-slate-50 transition-colors flex flex-col justify-between sm:justify-start ${canEdit ? 'cursor-pointer group' : ''}`}
+        className={`p-1 sm:p-2 border-b border-r border-slate-100 min-h-[50px] sm:min-h-[100px] md:min-h-[120px] transition-colors flex flex-col justify-between sm:justify-start ${canEdit ? 'cursor-pointer group' : ''} ${cellBg}`}
         onClick={() => canEdit && openAddForDate(i)}
       >
         <div className="flex justify-between items-center sm:items-start sm:mb-2 w-full">
-          <span className={`text-xs sm:text-sm font-bold w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${
-            todayString === dString ? 'bg-emerald-600 text-white' : 'text-slate-700 ' + (canEdit ? 'group-hover:text-emerald-600' : '')
-          }`}>
+          <span className={`text-xs sm:text-sm font-bold w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${dateColor}`}>
             {i}
           </span>
           {canEdit && (
@@ -214,6 +323,14 @@ export function AdminCalendar() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-xl font-bold tracking-tight text-slate-800">Kalender Akademik</h1>
+        {canEdit && (
+          <button
+            onClick={generateHolidays}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition-colors"
+          >
+            <Check className="w-4 h-4" /> Generate Libur Nasional
+          </button>
+        )}
       </div>
       
       <Card className="border-slate-200 shadow-sm overflow-hidden">

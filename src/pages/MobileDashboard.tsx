@@ -72,31 +72,30 @@ export function MobileDashboard() {
   const [selectedTermId, setSelectedTermId] = useState<string>('');
 
   useEffect(() => {
-    let parsedTerms = [];
-    const stored = localStorage.getItem('mockAcademicTerms');
-    
-    if (stored) {
+    async function loadTerms() {
       try {
-        parsedTerms = JSON.parse(stored);
+        const data = await apiClient('/crud.php?table=academic_terms');
+        const parsedTerms = data.map((t: any) => ({
+          id: String(t.id),
+          year: t.year,
+          semester: t.semester,
+          isActive: Boolean(t.is_active)
+        }));
+        setTerms(parsedTerms);
+        
+        const savedSelected = localStorage.getItem('selectedAcademicTermId');
+        if (savedSelected && parsedTerms.find((t: any) => t.id === savedSelected)) {
+          setSelectedTermId(savedSelected);
+        } else {
+          const activeTerm = parsedTerms.find((t: any) => t.isActive);
+          if (activeTerm) setSelectedTermId(activeTerm.id);
+          else if (parsedTerms.length > 0) setSelectedTermId(parsedTerms[0].id);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Failed to load academic terms", e);
       }
     }
-    
-    if (parsedTerms.length === 0) {
-      parsedTerms = [];
-    }
-    
-    setTerms(parsedTerms);
-    
-    const savedSelected = localStorage.getItem('selectedAcademicTermId');
-    if (savedSelected && parsedTerms.find(t => t.id === savedSelected)) {
-      setSelectedTermId(savedSelected);
-    } else {
-      const activeTerm = parsedTerms.find(t => t.isActive);
-      if (activeTerm) setSelectedTermId(activeTerm.id);
-      else if (parsedTerms.length > 0) setSelectedTermId(parsedTerms[0].id);
-    }
+    loadTerms();
   }, []);
 
   const activeTerm = terms.find(t => t.id === selectedTermId);
