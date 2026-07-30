@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Plus, Edit2, Trash2, Check, X, FileText, AlertTriangle, Users, Calendar, MapPin, Search, Filter, Award, Activity, Sparkles, UserCheck, Shield } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -15,17 +16,17 @@ export function KesiswaanPrestasiPelanggaran() {
 
   // Pelanggaran / SP State
   const [pelanggaran, setPelanggaran] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kesiswaan_pelanggaran_data');
+    const saved = remoteStorage.getItem('kesiswaan_pelanggaran_data');
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('kesiswaan_pelanggaran_data', JSON.stringify(pelanggaran));
+    remoteStorage.setItem('kesiswaan_pelanggaran_data', JSON.stringify(pelanggaran));
   }, [pelanggaran]);
 
   // Handle Sync from BK (Rekomendasi SP)
   useEffect(() => {
-    const bkData = localStorage.getItem('bk_rekomendasi_sp');
+    const bkData = remoteStorage.getItem('bk_rekomendasi_sp');
     if (bkData) {
       try {
         const bkCases = JSON.parse(bkData);
@@ -55,7 +56,7 @@ export function KesiswaanPrestasiPelanggaran() {
           if (updated) {
             setPelanggaran(currentPelanggaran);
             // clear the pending recommendation to avoid duplicate processing
-            localStorage.setItem('bk_rekomendasi_sp', '[]');
+            remoteStorage.setItem('bk_rekomendasi_sp', '[]');
           }
         }
       } catch (e) {
@@ -330,7 +331,7 @@ export function KesiswaanPrestasiPelanggaran() {
 
 export function KesiswaanEkskul() {
   const [ekskulList, setEkskulList] = useState<any[]>(() => {
-    const saved = localStorage.getItem('kesiswaan_ekskul_data');
+    const saved = remoteStorage.getItem('kesiswaan_ekskul_data');
     return saved ? JSON.parse(saved) : [
       { 
         id: 1, 
@@ -402,7 +403,7 @@ export function KesiswaanEkskul() {
   });
 
   useEffect(() => {
-    localStorage.setItem('kesiswaan_ekskul_data', JSON.stringify(ekskulList));
+    remoteStorage.setItem('kesiswaan_ekskul_data', JSON.stringify(ekskulList));
   }, [ekskulList]);
 
   const [searchQuery, setSearchQuery] = useState('');

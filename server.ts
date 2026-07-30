@@ -113,6 +113,49 @@ async function startServer() {
     }));
   } else {
 
+  
+  // Key-value store endpoint
+  app.all('/api/keyval.php', async (req, res) => {
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS key_value_store (
+        k varchar(255) NOT NULL,
+        v longtext NOT NULL,
+        PRIMARY KEY (k)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
+      
+      const method = req.method;
+      if (method === 'GET') {
+        const key = req.query.key;
+        if (key) {
+          const [rows] = await pool.query('SELECT v FROM key_value_store WHERE k = ?', [key]) as any;
+          res.json({ value: rows.length ? rows[0].v : null });
+        } else {
+          const [rows] = await pool.query('SELECT * FROM key_value_store') as any;
+          const obj = {};
+          rows.forEach(r => { obj[r.k] = r.v; });
+          res.json(obj);
+        }
+      } else if (method === 'POST') {
+        const { key, value } = req.body;
+        if (!key || value === undefined) return res.status(400).json({ error: 'Missing key or value' });
+        await pool.query('INSERT INTO key_value_store (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [key, value]);
+        res.json({ status: 'success' });
+      } else if (method === 'DELETE') {
+        const key = req.query.key;
+        if (key) {
+          await pool.query('DELETE FROM key_value_store WHERE k = ?', [key]);
+        } else {
+          await pool.query('TRUNCATE TABLE key_value_store');
+        }
+        res.json({ status: 'success' });
+      } else {
+        res.status(405).json({ error: 'Method not allowed' });
+      }
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.all('/api/crud.php', (req, res, next) => {
     const table = req.query.table;
     const id = req.query.id;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { mockStudents } from '../data/mock';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -374,7 +375,7 @@ export function PrestasiWalas() {
 
 export function BkWalas() {
   const [cases, setCases] = useState(() => {
-    const saved = localStorage.getItem('walas_cases_data');
+    const saved = remoteStorage.getItem('walas_cases_data');
     return saved ? JSON.parse(saved) : [
     { 
       id: 1, 
@@ -388,7 +389,7 @@ export function BkWalas() {
   });
 
   useEffect(() => {
-    localStorage.setItem('walas_cases_data', JSON.stringify(cases));
+    remoteStorage.setItem('walas_cases_data', JSON.stringify(cases));
   }, [cases]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -419,7 +420,7 @@ export function BkWalas() {
 
     // Jika dialihkan ke Kesiswaan, tambahkan ke storage Kesiswaan
     if (status === 'Alihkan ke Kesiswaan') {
-      const kesiswaanSaved = localStorage.getItem('bk_rekomendasi_sp'); // We can reuse the same sync queue
+      const kesiswaanSaved = remoteStorage.getItem('bk_rekomendasi_sp'); // We can reuse the same sync queue
       const kesiswaanCases = kesiswaanSaved ? JSON.parse(kesiswaanSaved) : [];
       
       kesiswaanCases.push({
@@ -429,12 +430,12 @@ export function BkWalas() {
         kasus: newCase.kasus,
         usulanSP: 'Belum Ditentukan'
       });
-      localStorage.setItem('bk_rekomendasi_sp', JSON.stringify(kesiswaanCases));
+      remoteStorage.setItem('bk_rekomendasi_sp', JSON.stringify(kesiswaanCases));
     }
 
     // Jika dialihkan ke BK, tambahkan juga ke storage BK
     if (status === 'Alihkan ke BK') {
-      const bkSaved = localStorage.getItem('bk_cases_data');
+      const bkSaved = remoteStorage.getItem('bk_cases_data');
       const bkCases = bkSaved ? JSON.parse(bkSaved) : [];
       
       // Cek apakah sudah ada untuk menghindari duplikasi jika diedit (untuk saat ini create new)
@@ -442,7 +443,7 @@ export function BkWalas() {
         ...newCase,
         tindakLanjutBK: 'Menunggu penanganan BK'
       });
-      localStorage.setItem('bk_cases_data', JSON.stringify(bkCases));
+      remoteStorage.setItem('bk_cases_data', JSON.stringify(bkCases));
     }
     
     setCases([newCase, ...cases]);

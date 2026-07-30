@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Edit2, Trash2, Plus, X, Check, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -11,7 +12,7 @@ export function AdminCalendar() {
   const [agenda, setAgenda] = useState<{id: number, date: string, event: string, type: string, color?: string}[]>(() => {
     let initialAgenda = [];
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mockAgenda');
+      const stored = remoteStorage.getItem('mockAgenda');
       if (stored) {
         try { initialAgenda = JSON.parse(stored); } catch (e) {}
       }
@@ -57,14 +58,14 @@ export function AdminCalendar() {
     });
 
     if (added && typeof window !== 'undefined') {
-      localStorage.setItem('mockAgenda', JSON.stringify(initialAgenda));
+      remoteStorage.setItem('mockAgenda', JSON.stringify(initialAgenda));
     }
     
     return initialAgenda;
   });
 
   useEffect(() => {
-    localStorage.setItem('mockAgenda', JSON.stringify(agenda));
+    remoteStorage.setItem('mockAgenda', JSON.stringify(agenda));
   }, [agenda]);
 
   const [currentDate, setCurrentDate] = useState(new Date(2026, 6, 1)); // Default to July 2026

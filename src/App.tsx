@@ -48,13 +48,15 @@ import { DashboardGuruQuran, GuruQuranAbsensiDhuha, GuruQuranLaporanDhuha } from
 
 import { mockUsers, mockStudents, mockClasses, mockSubjects } from './data/mock';
 import { apiClient } from './lib/apiClient';
+import { remoteStorage } from './lib/remoteStorage';
+
 
 function DataSyncLayer({ children }: { children: React.ReactNode }) {
   const [synced, setSynced] = useState(false);
 
   useEffect(() => {
-    apiClient('/sync')
-      .then((res: any) => {
+    Promise.all([apiClient('/sync'), remoteStorage.init()])
+      .then(([res, _]: any) => {
         if (res && res.users) {
           const syncedUsers = res.users.map((u: any) => ({
             ...u,

@@ -1,4 +1,5 @@
 import { TermSwitcher } from '../components/ui/TermSwitcher';
+import { remoteStorage } from '../lib/remoteStorage';
 import { apiClient } from '../lib/apiClient';
 import React, { useState, useEffect } from 'react';
 import { UserAnnouncements } from '../components/ui/UserAnnouncements';
@@ -92,7 +93,7 @@ export function DashboardAdmin() {
     
     apiClient('/crud.php?table=academic_terms')
       .then(data => {
-        const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+        const selectedTermId = remoteStorage.getItem('selectedAcademicTermId');
         let activeTerm = null;
         if (selectedTermId) {
           activeTerm = data.find((t: any) => String(t.id) === selectedTermId);

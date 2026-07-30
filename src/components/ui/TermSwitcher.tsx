@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { remoteStorage } from '../../lib/remoteStorage';
 import { ChevronDown } from 'lucide-react';
 import { apiClient } from '../../lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,17 +23,17 @@ export function TermSwitcher() {
         }));
         setTerms(parsedTerms);
         
-        const savedId = localStorage.getItem('selectedAcademicTermId');
+        const savedId = remoteStorage.getItem('selectedAcademicTermId');
         if (savedId && parsedTerms.find((t: any) => t.id === savedId)) {
           setSelectedTermId(savedId);
         } else {
           const active = parsedTerms.find((t: any) => t.isActive);
           if (active) {
             setSelectedTermId(active.id);
-            localStorage.setItem('selectedAcademicTermId', active.id);
+            remoteStorage.setItem('selectedAcademicTermId', active.id);
           } else if (parsedTerms.length > 0) {
             setSelectedTermId(parsedTerms[0].id);
-            localStorage.setItem('selectedAcademicTermId', parsedTerms[0].id);
+            remoteStorage.setItem('selectedAcademicTermId', parsedTerms[0].id);
           }
         }
       } catch (e) {
@@ -84,7 +85,7 @@ export function TermSwitcher() {
                   key={term.id}
                   onClick={() => {
                     setSelectedTermId(term.id);
-                    localStorage.setItem('selectedAcademicTermId', term.id);
+                    remoteStorage.setItem('selectedAcademicTermId', term.id);
                     setIsTermMenuOpen(false);
                     window.location.reload();
                   }}

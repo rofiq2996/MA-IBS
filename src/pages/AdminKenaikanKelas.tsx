@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/apiClient';
+import { remoteStorage } from '../lib/remoteStorage';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -55,7 +56,7 @@ export function AdminKenaikanKelas() {
       let academicYear = '2026/2027';
       try {
         const termsData = await apiClient('/crud.php?table=academic_terms');
-        const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+        const selectedTermId = remoteStorage.getItem('selectedAcademicTermId');
         let activeTerm = null;
         if (selectedTermId) activeTerm = termsData.find((t: any) => String(t.id) === selectedTermId);
         if (!activeTerm) activeTerm = termsData.find((t: any) => Boolean(t.is_active));
@@ -89,7 +90,7 @@ export function AdminKenaikanKelas() {
       });
 
       setStudents(updatedStudents);
-      localStorage.setItem('mockStudents', JSON.stringify(updatedStudents));
+      remoteStorage.setItem('mockStudents', JSON.stringify(updatedStudents));
       window.alert('Berhasil memproses kenaikan kelas!');
       
       setSourceClass('');

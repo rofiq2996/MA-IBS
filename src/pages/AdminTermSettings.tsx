@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { 
   Calendar, CalendarDays, Plus, Check, X, AlertCircle, Trash2, Edit2, ToggleLeft, ToggleRight, Settings, ArrowUpCircle 
@@ -45,10 +46,10 @@ export function AdminTermSettings() {
     fetchTerms();
   }, []);
 
-  // Remove old localStorage block
+  // Remove old remoteStorage block
   /*
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mockAcademicTerms');
+      const stored = remoteStorage.getItem('mockAcademicTerms');
       if (stored) {
         try { return JSON.parse(stored); } catch (e) {}
       }
@@ -127,7 +128,7 @@ export function AdminTermSettings() {
       return;
     }
     
-    const storedStudents = localStorage.getItem('mockStudents');
+    const storedStudents = remoteStorage.getItem('mockStudents');
     if (storedStudents) {
       try {
         let students = JSON.parse(storedStudents);
@@ -158,7 +159,7 @@ export function AdminTermSettings() {
           return { ...s, className: newClass };
         });
         
-        localStorage.setItem('mockStudents', JSON.stringify(students));
+        remoteStorage.setItem('mockStudents', JSON.stringify(students));
         setFeedback({ 
           type: 'success', 
           message: `Kenaikan kelas berhasil diproses. ${promotedCount} siswa naik kelas dan ${graduatedCount} siswa dinyatakan lulus.` 

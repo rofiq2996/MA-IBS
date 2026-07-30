@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/apiClient';
+import { remoteStorage } from '../lib/remoteStorage';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -83,7 +84,7 @@ export function MobileDashboard() {
         }));
         setTerms(parsedTerms);
         
-        const savedSelected = localStorage.getItem('selectedAcademicTermId');
+        const savedSelected = remoteStorage.getItem('selectedAcademicTermId');
         if (savedSelected && parsedTerms.find((t: any) => t.id === savedSelected)) {
           setSelectedTermId(savedSelected);
         } else {
@@ -393,7 +394,7 @@ export function MobileDashboard() {
                                 key={term.id}
                                 onClick={() => {
                                   setSelectedTermId(term.id);
-                                  localStorage.setItem('selectedAcademicTermId', term.id);
+                                  remoteStorage.setItem('selectedAcademicTermId', term.id);
                                   setIsTermMenuOpen(false);
                                   window.location.reload();
                                 }}

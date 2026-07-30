@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { User, Shield, School, LogOut, Lock, BellRing, Save, CheckCircle, Plus, Trash2, AlertCircle, BookOpen, Database, DownloadCloud, UploadCloud } from 'lucide-react';
@@ -19,17 +20,17 @@ export function AdminSettings() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Location settings
-  const [schoolLatL, setSchoolLatL] = useState(localStorage.getItem('school_lat_l') || '-0.502');
-  const [schoolLngL, setSchoolLngL] = useState(localStorage.getItem('school_lng_l') || '101.447');
-  const [schoolRadiusL, setSchoolRadiusL] = useState(localStorage.getItem('school_radius_l') || '200');
+  const [schoolLatL, setSchoolLatL] = useState(remoteStorage.getItem('school_lat_l') || '-0.502');
+  const [schoolLngL, setSchoolLngL] = useState(remoteStorage.getItem('school_lng_l') || '101.447');
+  const [schoolRadiusL, setSchoolRadiusL] = useState(remoteStorage.getItem('school_radius_l') || '200');
 
-  const [schoolLatP, setSchoolLatP] = useState(localStorage.getItem('school_lat_p') || '-0.502');
-  const [schoolLngP, setSchoolLngP] = useState(localStorage.getItem('school_lng_p') || '101.447');
-  const [schoolRadiusP, setSchoolRadiusP] = useState(localStorage.getItem('school_radius_p') || '200');
+  const [schoolLatP, setSchoolLatP] = useState(remoteStorage.getItem('school_lat_p') || '-0.502');
+  const [schoolLngP, setSchoolLngP] = useState(remoteStorage.getItem('school_lng_p') || '101.447');
+  const [schoolRadiusP, setSchoolRadiusP] = useState(remoteStorage.getItem('school_radius_p') || '200');
 
   // Time limit settings
-  const [limitAbsenSiswa, setLimitAbsenSiswa] = useState(localStorage.getItem('limit_absen_siswa') || '15:00');
-  const [limitAbsenZuhur, setLimitAbsenZuhur] = useState(localStorage.getItem('limit_absen_zuhur') || '13:00');
+  const [limitAbsenSiswa, setLimitAbsenSiswa] = useState(remoteStorage.getItem('limit_absen_siswa') || '15:00');
+  const [limitAbsenZuhur, setLimitAbsenZuhur] = useState(remoteStorage.getItem('limit_absen_zuhur') || '13:00');
 
   // Teacher Subjects State
   const [subjects, setSubjects] = useState<{ id: string; subjectName: string; className: string }[]>(user?.subjects || []);
@@ -42,7 +43,7 @@ export function AdminSettings() {
     }
   };
       
-  // Dynamic admin-configured lists loaded from localStorage with fallbacks
+  // Dynamic admin-configured lists loaded from remoteStorage with fallbacks
   const adminSubjects = mockSubjects;
 
   const adminClasses = mockClasses;
@@ -68,14 +69,14 @@ export function AdminSettings() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('school_lat_l', schoolLatL);
-    localStorage.setItem('school_lng_l', schoolLngL);
-    localStorage.setItem('school_radius_l', schoolRadiusL);
-    localStorage.setItem('school_lat_p', schoolLatP);
-    localStorage.setItem('school_lng_p', schoolLngP);
-    localStorage.setItem('school_radius_p', schoolRadiusP);
-    localStorage.setItem('limit_absen_siswa', limitAbsenSiswa);
-    localStorage.setItem('limit_absen_zuhur', limitAbsenZuhur);
+    remoteStorage.setItem('school_lat_l', schoolLatL);
+    remoteStorage.setItem('school_lng_l', schoolLngL);
+    remoteStorage.setItem('school_radius_l', schoolRadiusL);
+    remoteStorage.setItem('school_lat_p', schoolLatP);
+    remoteStorage.setItem('school_lng_p', schoolLngP);
+    remoteStorage.setItem('school_radius_p', schoolRadiusP);
+    remoteStorage.setItem('limit_absen_siswa', limitAbsenSiswa);
+    remoteStorage.setItem('limit_absen_zuhur', limitAbsenZuhur);
     setSuccessMessage('Setelan profil berhasil disimpan!');
     setTimeout(() => setSuccessMessage(null), 3000);
   };
@@ -119,10 +120,10 @@ export function AdminSettings() {
 
   const handleBackup = () => {
     const data: Record<string, string> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
+    for (let i = 0; i < remoteStorage.length; i++) {
+      const key = remoteStorage.key(i);
       if (key) {
-        data[key] = localStorage.getItem(key) || '';
+        data[key] = remoteStorage.getItem(key) || '';
       }
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -146,9 +147,9 @@ export function AdminSettings() {
         const data = JSON.parse(event.target?.result as string);
         if (typeof data === 'object' && data !== null) {
           if (window.confirm('Peringatan: Seluruh data saat ini akan ditimpa dengan data dari file backup. Anda yakin ingin melanjutkan?')) {
-            localStorage.clear();
+            remoteStorage.clear();
             for (const key in data) {
-              localStorage.setItem(key, data[key]);
+              remoteStorage.setItem(key, data[key]);
             }
             alert('Restore data berhasil. Halaman akan dimuat ulang.');
             window.location.reload();

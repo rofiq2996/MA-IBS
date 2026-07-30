@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { User, Role } from '../types';
 import { apiClient } from '../lib/apiClient';
 
@@ -15,7 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('currentUser');
+      const stored = remoteStorage.getItem('currentUser');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const updatedUser = { ...user, avatar: data.user.avatar, name: data.user.name };
             setUser(updatedUser);
             if (typeof window !== 'undefined') {
-              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+              remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
             }
           }
         })
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const u = { ...apiUser, roles: parsedRoles };
         setUser(u);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('currentUser', JSON.stringify(u));
+          remoteStorage.setItem('currentUser', JSON.stringify(u));
         }
         return;
     }
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { ...user, role };
       setUser(updatedUser);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
     }
   };
@@ -82,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
       
       if (updates.avatar && user.id) {
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              const finalUser = { ...updatedUser, avatar: result.avatar_url };
              setUser(finalUser);
              if (typeof window !== 'undefined') {
-                localStorage.setItem('currentUser', JSON.stringify(finalUser));
+                remoteStorage.setItem('currentUser', JSON.stringify(finalUser));
              }
           }
         } catch (error) {
@@ -111,8 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('selectedAcademicTermId');
+      remoteStorage.removeItem('currentUser');
+      remoteStorage.removeItem('selectedAcademicTermId');
     }
   };
 

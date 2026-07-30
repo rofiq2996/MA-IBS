@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { remoteStorage } from '../../lib/remoteStorage';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -43,7 +44,7 @@ export function AppLayout() {
           }));
           setTerms(parsedTerms);
           
-          const savedId = localStorage.getItem('selectedAcademicTermId');
+          const savedId = remoteStorage.getItem('selectedAcademicTermId');
           if (savedId && parsedTerms.find((t: any) => t.id === savedId)) {
             setSelectedTermId(savedId);
           } else {

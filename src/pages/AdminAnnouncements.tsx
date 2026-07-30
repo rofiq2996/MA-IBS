@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/apiClient';
+import { remoteStorage } from '../lib/remoteStorage';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { 
@@ -31,7 +32,7 @@ export function AdminAnnouncements() {
     fetchAnnouncements();
   }, []);
 
-  // Removed localStorage sync effect
+  // Removed remoteStorage sync effect
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Semua');

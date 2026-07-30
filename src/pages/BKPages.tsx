@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Edit2, Trash2, Plus, X, Check } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 
 export function BKPreventif() {
   const [agendas, setAgendas] = useState(() => {
-    const saved = localStorage.getItem('bk_preventif_data');
+    const saved = remoteStorage.getItem('bk_preventif_data');
     return saved ? JSON.parse(saved) : [
       { id: 1, title: 'Materi Sosialisasi Anti Bullying', date: '2026-11-15', target: 'Seluruh Siswa', type: 'Sosialisasi', status: 'Terencana' },
       { id: 2, title: 'Bimbingan Klasikal Tata Tertib', date: '2026-10-10', target: 'Kelas X', type: 'Bimbingan Klasikal', status: 'Selesai' }
@@ -13,7 +14,7 @@ export function BKPreventif() {
   });
 
   useEffect(() => {
-    localStorage.setItem('bk_preventif_data', JSON.stringify(agendas));
+    remoteStorage.setItem('bk_preventif_data', JSON.stringify(agendas));
   }, [agendas]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,14 +199,14 @@ export function BKPreventif() {
 
 export function BKPengembangan() {
   const [programs, setPrograms] = useState(() => {
-    const saved = localStorage.getItem('bk_pengembangan_data');
+    const saved = remoteStorage.getItem('bk_pengembangan_data');
     return saved ? JSON.parse(saved) : [
       { id: 1, title: 'Pemetaan Minat Bakat', target: 'Kelas X', date: '2026-08-10', progress: 85, description: 'Bekerja sama dengan lembaga psikologi' }
     ];
   });
 
   useEffect(() => {
-    localStorage.setItem('bk_pengembangan_data', JSON.stringify(programs));
+    remoteStorage.setItem('bk_pengembangan_data', JSON.stringify(programs));
   }, [programs]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -382,7 +383,7 @@ export function BKPengembangan() {
 
 export function BKKuratif() {
   const [cases, setCases] = useState(() => {
-    const saved = localStorage.getItem('bk_cases_data');
+    const saved = remoteStorage.getItem('bk_cases_data');
     return saved ? JSON.parse(saved) : [
     { 
       id: 1, 
@@ -400,7 +401,7 @@ export function BKKuratif() {
   });
 
   useEffect(() => {
-    localStorage.setItem('bk_cases_data', JSON.stringify(cases));
+    remoteStorage.setItem('bk_cases_data', JSON.stringify(cases));
   }, [cases]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -453,7 +454,7 @@ export function BKKuratif() {
   
   const handleRekomendasiSP = (c) => {
     if (window.confirm('Rekomendasikan kasus ini ke Kesiswaan untuk Poin / SP?')) {
-      const bkSaved = localStorage.getItem('bk_rekomendasi_sp');
+      const bkSaved = remoteStorage.getItem('bk_rekomendasi_sp');
       const bkCases = bkSaved ? JSON.parse(bkSaved) : [];
       
       bkCases.push({
@@ -464,7 +465,7 @@ export function BKKuratif() {
         usulanSP: c.tingkat === 'Berat' ? 'SP 2' : (c.tingkat === 'Sedang' ? 'SP 1' : 'Tidak Ada')
       });
       
-      localStorage.setItem('bk_rekomendasi_sp', JSON.stringify(bkCases));
+      remoteStorage.setItem('bk_rekomendasi_sp', JSON.stringify(bkCases));
       
       // Update status in BK to indicate it was forwarded
       setCases(cases.map(caseItem => caseItem.id === c.id ? { ...caseItem, status: 'Diteruskan ke Kesiswaan' } : caseItem));
@@ -700,14 +701,14 @@ export function BKKuratif() {
 
 export function BKPenyaluran() {
   const [items, setItems] = useState(() => {
-    const saved = localStorage.getItem('bk_penyaluran_data');
+    const saved = remoteStorage.getItem('bk_penyaluran_data');
     return saved ? JSON.parse(saved) : [
       { id: 1, date: '2026-08-15', studentName: 'Ahmad (XII-IPA 1)', type: 'Lanjut Studi', destination: 'PTN A - Kedokteran', recommendation: 'Sangat disarankan', status: 'Diterima' }
     ];
   });
 
   useEffect(() => {
-    localStorage.setItem('bk_penyaluran_data', JSON.stringify(items));
+    remoteStorage.setItem('bk_penyaluran_data', JSON.stringify(items));
   }, [items]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -891,14 +892,14 @@ export function BKPenyaluran() {
 
 export function BKAdvokasi() {
   const [cases, setCases] = useState(() => {
-    const saved = localStorage.getItem('bk_advokasi_data');
+    const saved = remoteStorage.getItem('bk_advokasi_data');
     return saved ? JSON.parse(saved) : [
       { id: 1, date: '2026-09-01', studentName: 'Rina (X-A)', parties: 'Guru Mapel, Wali Kelas', description: 'Kesalahpahaman nilai tugas', action: 'Mediasi bersama', status: 'Selesai' }
     ];
   });
 
   useEffect(() => {
-    localStorage.setItem('bk_advokasi_data', JSON.stringify(cases));
+    remoteStorage.setItem('bk_advokasi_data', JSON.stringify(cases));
   }, [cases]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);

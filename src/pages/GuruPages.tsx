@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -18,7 +19,7 @@ export interface TeacherSubject {
 
 export function getTeacherSubjects(): TeacherSubject[] {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('guru_subjects');
+    const stored = remoteStorage.getItem('guru_subjects');
     if (stored) {
       try {
         return JSON.parse(stored);
@@ -30,7 +31,7 @@ export function getTeacherSubjects(): TeacherSubject[] {
 
 export function saveTeacherSubjects(subjects: TeacherSubject[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('guru_subjects', JSON.stringify(subjects));
+    remoteStorage.setItem('guru_subjects', JSON.stringify(subjects));
   }
 }
 
@@ -335,7 +336,7 @@ export function Absensi() {
     }
   }, [selectedClass, availableMapel, selectedMapel]);
 
-  const limitAbsenSiswa = localStorage.getItem('limit_absen_siswa') || '15:00';
+  const limitAbsenSiswa = remoteStorage.getItem('limit_absen_siswa') || '15:00';
   const [limitHour, limitMinute] = limitAbsenSiswa.split(':').map(Number);
   const now = new Date();
   const currentHour = now.getHours();
@@ -525,7 +526,7 @@ export function InputNilai() {
   const [selectedMapel, setSelectedMapel] = useState('');
   const [uhCount, setUhCount] = useState(1);
   
-  // Read active semester from localStorage (set by admin)
+  // Read active semester from remoteStorage (set by admin)
   const [semester, setSemester] = useState('Ganjil');
   
   useEffect(() => {
@@ -533,7 +534,7 @@ export function InputNilai() {
       
       apiClient('/crud.php?table=academic_terms')
         .then(data => {
-          const selectedTermId = localStorage.getItem('selectedAcademicTermId');
+          const selectedTermId = remoteStorage.getItem('selectedAcademicTermId');
           let activeTerm = null;
           if (selectedTermId) {
             activeTerm = data.find((t: any) => String(t.id) === selectedTermId);
@@ -2034,7 +2035,7 @@ export function AbsensiZuhur() {
 
   const today = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
   const absensiKey = `absenZuhur_${user?.id}_${today}`;
-  const [hasAbsen, setHasAbsen] = useState(typeof window !== 'undefined' ? localStorage.getItem(absensiKey) === 'true' : false);
+  const [hasAbsen, setHasAbsen] = useState(typeof window !== 'undefined' ? remoteStorage.getItem(absensiKey) === 'true' : false);
   
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -2043,7 +2044,7 @@ export function AbsensiZuhur() {
     return () => clearInterval(timer);
   }, []);
 
-  const limitAbsenZuhur = localStorage.getItem('limit_absen_zuhur') || '13:00';
+  const limitAbsenZuhur = remoteStorage.getItem('limit_absen_zuhur') || '13:00';
   const [limitHour, limitMinute] = limitAbsenZuhur.split(':').map(Number);
   const isPastLimit = currentTime.getHours() > limitHour || (currentTime.getHours() === limitHour && currentTime.getMinutes() >= limitMinute);
   
@@ -2061,7 +2062,7 @@ export function AbsensiZuhur() {
 
     const saveAbsen = (msg: string) => {
         window.alert(msg);
-        localStorage.setItem(absensiKey, 'true');
+        remoteStorage.setItem(absensiKey, 'true');
         setHasAbsen(true);
         setStatus(null);
         setReason('');
@@ -2087,13 +2088,13 @@ export function AbsensiZuhur() {
             const { latitude, longitude } = position.coords;
             
             // Get saved school coordinates or use default
-            const schoolLatL = parseFloat(localStorage.getItem('school_lat_l') || '-0.502');
-            const schoolLngL = parseFloat(localStorage.getItem('school_lng_l') || '101.447');
-            const maxRadiusL = parseInt(localStorage.getItem('school_radius_l') || '200', 10);
+            const schoolLatL = parseFloat(remoteStorage.getItem('school_lat_l') || '-0.502');
+            const schoolLngL = parseFloat(remoteStorage.getItem('school_lng_l') || '101.447');
+            const maxRadiusL = parseInt(remoteStorage.getItem('school_radius_l') || '200', 10);
             
-            const schoolLatP = parseFloat(localStorage.getItem('school_lat_p') || '-0.502');
-            const schoolLngP = parseFloat(localStorage.getItem('school_lng_p') || '101.447');
-            const maxRadiusP = parseInt(localStorage.getItem('school_radius_p') || '200', 10);
+            const schoolLatP = parseFloat(remoteStorage.getItem('school_lat_p') || '-0.502');
+            const schoolLngP = parseFloat(remoteStorage.getItem('school_lng_p') || '101.447');
+            const maxRadiusP = parseInt(remoteStorage.getItem('school_radius_p') || '200', 10);
             
             const R = 6371e3; // metres
             const φ1 = latitude * Math.PI/180;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Plus, Edit2, Trash2, X, Check, Search, UserCheck, Download, Upload } from 'lucide-react';
 import { mockClasses, mockUsers, mockSubjects } from '../data/mock';
@@ -22,12 +23,12 @@ export function AdminTeachingAssignments() {
   });
 
   const [assignments, setAssignments] = useState<TeachingAssignment[]>(() => {
-    const saved = localStorage.getItem('app_teaching_assignments');
+    const saved = remoteStorage.getItem('app_teaching_assignments');
     return [];
   });
   
   useEffect(() => {
-    localStorage.setItem('app_teaching_assignments', JSON.stringify(assignments));
+    remoteStorage.setItem('app_teaching_assignments', JSON.stringify(assignments));
   }, [assignments]);
   
   const [subjects, setSubjects] = useState<any[]>([]);

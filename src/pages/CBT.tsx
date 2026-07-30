@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FileText, Share2, Plus, Edit3, Trash2, List, PlayCircle, CheckCircle, Clock } from 'lucide-react';
@@ -50,7 +51,7 @@ export function CBT() {
     : ['Semua Kelas', ...classes.map(c => c.name)]; // Fallback for admin
 
   const [exams, setExams] = useState<Exam[]>(() => {
-    const saved = localStorage.getItem('cbt_exams_data');
+    const saved = remoteStorage.getItem('cbt_exams_data');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -65,7 +66,7 @@ export function CBT() {
   });
 
   const [bankSoal, setBankSoal] = useState<Question[]>(() => {
-    const saved = localStorage.getItem('cbt_banksoal_data');
+    const saved = remoteStorage.getItem('cbt_banksoal_data');
     return saved ? JSON.parse(saved) : [];
   });
 
