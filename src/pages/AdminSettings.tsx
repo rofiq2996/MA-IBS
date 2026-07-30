@@ -216,10 +216,10 @@ export function AdminSettings() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Logout Confirmation Modal */}
         {showLogoutModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div
               onClick={() => setShowLogoutModal(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/75 backdrop-blur-sm"
             />
             <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
               <div className="p-6 text-center">

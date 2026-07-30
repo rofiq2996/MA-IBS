@@ -325,8 +325,8 @@ export function MobileDashboard() {
       <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-emerald-800/15 via-emerald-500/5 to-transparent pointer-events-none -z-10" />
 
       {/* 2. TOP FLOATING APP HEADER */}
-      <div className="relative z-[70] mb-4">
-        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-800 to-emerald-600 px-5 pt-5 pb-5 sm:px-6 rounded-b-3xl border-b border-emerald-700 shadow-sm gap-3 relative z-[70]">
+      <div className="relative mb-4">
+        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-800 to-emerald-600 px-5 pt-5 pb-5 sm:px-6 rounded-b-3xl border-b border-emerald-700 shadow-sm gap-3 relative">
           <div className="flex items-center gap-3 min-w-0">
             <motion.div 
               whileTap={{ scale: 0.9 }}
@@ -481,7 +481,7 @@ export function MobileDashboard() {
         </div>
       </div>
 
-      <div className="px-4 space-y-4 relative z-50">
+      <div className="px-4 space-y-4 relative">
 
         {/* JADWAL NGAJAR KHUSUS GURU/WALAS/GURU QUR'AN */}
         {(user?.role === 'guru' || user?.role === 'guru_quran' || user?.role === 'walas') && (
@@ -640,7 +640,7 @@ export function MobileDashboard() {
               animate={{ opacity: 0.6 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMoreMenu(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
             />
 
             {/* Bottom Sheet Drawer */}
@@ -649,7 +649,7 @@ export function MobileDashboard() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] shadow-[0_-8px_32px_rgba(0,0,0,0.12)] z-50 p-6 flex flex-col max-h-[85vh]"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] shadow-[0_-8px_32px_rgba(0,0,0,0.12)] z-[100] p-6 flex flex-col max-h-[85vh]"
             >
               {/* Premium Drag Indicator Handle */}
               <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 shrink-0" />

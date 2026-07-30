@@ -179,7 +179,7 @@ export function AppLayout() {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -6, scale: 0.95 }}
                             transition={{ duration: 0.15, ease: "easeOut" }}
-                            className="absolute right-0 mt-1.5 w-40 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-50 origin-top-right overflow-hidden"
+                            className="absolute right-0 mt-1.5 w-40 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-[9999] origin-top-right overflow-hidden"
                           >
                             {(Array.isArray(user.roles) ? user.roles : [user.role]).map((r) => {
                               const isActive = user.role === r;
@@ -288,14 +288,14 @@ export function AppLayout() {
       {/* Exit Confirmation Dialog Modal */}
       <AnimatePresence>
         {showExitModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowExitModal(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/75 backdrop-blur-sm"
             />
             {/* Modal Card */}
             <motion.div
@@ -335,13 +335,13 @@ export function AppLayout() {
       {/* Logout Confirmation Modal */}
       <AnimatePresence>
         {showLogoutModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogoutModal(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/75 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 16 }}
