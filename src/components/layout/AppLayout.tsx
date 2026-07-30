@@ -12,6 +12,7 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { Download } from 'lucide-react';
 import { apiClient } from '../../lib/apiClient';
+import { App as CapacitorApp } from '@capacitor/app';
 
 export function AppLayout() {
   const { user, logout, switchRole, updateUser } = useAuth();
@@ -21,6 +22,7 @@ export function AppLayout() {
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   const [terms, setTerms] = useState<any[]>([]);
   const [selectedTermId, setSelectedTermId] = useState<string>('');
@@ -84,6 +86,7 @@ export function AppLayout() {
     window.history.pushState({ isHomeGuard: true }, '');
 
     const handlePopState = (event: PopStateEvent) => {
+      if ((window as any).__isExitingApp) return;
       setShowExitModal(true);
       window.history.pushState({ isHomeGuard: true }, '');
     };
@@ -94,12 +97,25 @@ export function AppLayout() {
     };
   }, [location.pathname]);
 
-  const handleExitApp = () => {
+  const handleExitApp = async () => {
     setShowExitModal(false);
-    window.close();
+    
+    try {
+      await CapacitorApp.exitApp();
+    } catch (e) {
+      console.log('Capacitor exitApp not available');
+    }
+    
+    (window as any).__isExitingApp = true;
+    
+    // Back out of the history trap
+    window.history.go(-2);
+    
+    // Fallback if history.go doesn't close the app
     setTimeout(() => {
+      window.close();
       window.location.href = 'about:blank';
-    }, 150);
+    }, 300);
   };
 
   if (!user) {
@@ -254,7 +270,7 @@ export function AppLayout() {
               </button>
               
               <button 
-                onClick={logout}
+                onClick={() => setShowLogoutModal(true)}
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-red-50 hover:bg-red-100 text-red-600 transition-colors border border-red-200 shrink-0"
                 title="Sign Out"
               >
@@ -307,6 +323,54 @@ export function AppLayout() {
                 </button>
                 <button
                   onClick={handleExitApp}
+                  className="flex-1 py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm shadow-red-500/10 transition-all active:scale-95 cursor-pointer"
+                >
+                  Keluar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10"
+            >
+              <div className="p-6 text-center">
+                <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100 shadow-sm">
+                  <LogOut className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Keluar dari Akun?</h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin keluar dari sesi ini? Anda harus login kembali untuk mengakses aplikasi.
+                </p>
+              </div>
+              <div className="flex border-t border-slate-100 bg-slate-50 p-4 gap-3">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 py-2 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    logout();
+                  }}
                   className="flex-1 py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm shadow-red-500/10 transition-all active:scale-95 cursor-pointer"
                 >
                   Keluar

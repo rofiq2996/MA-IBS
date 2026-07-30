@@ -12,6 +12,7 @@ export function AdminSettings() {
   const { user, logout } = useAuth();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState(user?.username || '');
@@ -203,7 +204,7 @@ export function AdminSettings() {
             </div>
             
             <button 
-              onClick={logout}
+              onClick={() => setShowLogoutModal(true)}
               className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-colors"
             >
               <LogOut className="w-4 h-4" /> Keluar dari Akun
@@ -213,6 +214,44 @@ export function AdminSettings() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Logout Confirmation Modal */}
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              onClick={() => setShowLogoutModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-6 text-center">
+                <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100 shadow-sm">
+                  <LogOut className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 tracking-tight">Keluar dari Akun?</h3>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin keluar dari sesi ini? Anda harus login kembali untuk mengakses aplikasi.
+                </p>
+              </div>
+              <div className="flex border-t border-slate-100 bg-slate-50 p-4 gap-3">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 py-2 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    logout();
+                  }}
+                  className="flex-1 py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm shadow-red-500/10 transition-all active:scale-95 cursor-pointer"
+                >
+                  Keluar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ROLE SPECIFIC PREFERENCES */}
         <div className="md:col-span-2 space-y-6">
           {user?.role === 'admin' ? (
