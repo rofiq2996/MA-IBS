@@ -37,7 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       apiClient(`/get_user.php?id=${user.id}`)
         .then(data => {
           if (data.status === 'success' && data.user) {
-            const updatedUser = { ...user, avatar: data.user.avatar, name: data.user.name };
+            let parsedRoles = data.user.roles || [data.user.role];
+            if (typeof parsedRoles === 'string') {
+              try { parsedRoles = JSON.parse(parsedRoles); } catch(e) { parsedRoles = [data.user.role]; }
+            }
+            const updatedUser = { ...user, ...data.user, roles: parsedRoles };
             setUser(updatedUser);
             if (typeof window !== 'undefined') {
               remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));

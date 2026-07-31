@@ -46,8 +46,12 @@ export function AdminRombel() {
   // It might be useful to only show students who are in the same grade as the class.
   const classGrade = selectedClass ? selectedClass.split(' ')[0] : '';
   
+  const isAssignedToAnyClass = (className) => {
+    return classes.some(c => c.name === className);
+  };
+
   const availableStudents = students.filter(s => 
-    s.className !== selectedClass && 
+    !isAssignedToAnyClass(s.className) && 
     (!classGrade || s.grade === classGrade)
   );
 

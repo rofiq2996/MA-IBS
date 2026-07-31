@@ -4,6 +4,8 @@ import { Button } from '../components/ui/Button';
 import { FileText, Share2, Upload, Plus, Trash2, Link as LinkIcon, Download, X, CheckCircle2, Check } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
+import { useEffect } from 'react';
 
 interface Assignment {
   id: string;
@@ -68,6 +70,43 @@ export function LMSTugas() {
   const [form, setForm] = useState<Partial<Assignment>>({ type: 'tugas', className: 'X-IPA 1', subject: 'Matematika Peminatan' });
   const [submitForm, setSubmitForm] = useState({ file: null as File | null, link: '' });
   const [toastMessage, setToastMessage] = useState('');
+
+  const [availableClasses, setAvailableClasses] = useState<{value: string, label: string}[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<{value: string, label: string}[]>([]);
+
+  useEffect(() => {
+    // Basic fallback classes
+    let classOpts = [{value: 'X-IPA 1', label: 'X-IPA 1'}, {value: 'X-IPS 1', label: 'X-IPS 1'}];
+    let subjOpts = [{value: 'Matematika Peminatan', label: 'Matematika'}, {value: 'Bahasa Indonesia', label: 'B. Indo'}];
+    
+    if (user?.className) {
+       classOpts = [{value: user.className, label: user.className}];
+       setForm(f => ({ ...f, className: user.className }));
+    }
+    setAvailableClasses(classOpts);
+    setAvailableSubjects(subjOpts);
+
+    if (user?.id) {
+       // Ideally fetch teaching assignments here
+       apiClient('/crud.php?table=teaching_assignments').then(data => {
+          const myAssignments = data.filter((a:any) => a.teacher_id === String(user.id) || a.guru_id === String(user.id) || a.teacher_id === user.id || a.guru_id === user.id);
+          if (myAssignments.length > 0) {
+             const uniqueClasses = Array.from(new Set(myAssignments.map((a:any) => a.class_name || a.rombel))).filter(Boolean) as string[];
+             const uniqueSubjects = Array.from(new Set(myAssignments.map((a:any) => a.subject_name || a.mapel))).filter(Boolean) as string[];
+             
+             if (uniqueClasses.length > 0) {
+               setAvailableClasses(uniqueClasses.map(c => ({ value: c, label: c })));
+               setForm(f => ({ ...f, className: uniqueClasses[0] }));
+             }
+             if (uniqueSubjects.length > 0) {
+               setAvailableSubjects(uniqueSubjects.map(s => ({ value: s, label: s })));
+               setForm(f => ({ ...f, subject: uniqueSubjects[0] }));
+             }
+          }
+       }).catch(console.error);
+    }
+  }, [user]);
+
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -293,7 +332,7 @@ export function LMSTugas() {
                   <CustomSelect
                     value={form.className || 'X-IPA 1'}
                     onChange={(val) => setForm({...form, className: val})}
-                    options={[{value: 'X-IPA 1', label: 'X-IPA 1'}, {value: 'X-IPS 1', label: 'X-IPS 1'}]}
+                    options={availableClasses}
                   />
                 </div>
                 <div>
@@ -301,7 +340,7 @@ export function LMSTugas() {
                   <CustomSelect
                     value={form.subject || 'Matematika Peminatan'}
                     onChange={(val) => setForm({...form, subject: val})}
-                    options={[{value: 'Matematika Peminatan', label: 'Matematika'}, {value: 'Bahasa Indonesia', label: 'B. Indo'}]}
+                    options={availableSubjects}
                   />
                 </div>
               </div>

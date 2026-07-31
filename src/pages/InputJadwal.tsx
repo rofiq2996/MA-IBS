@@ -8,7 +8,19 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import * as XLSX from 'xlsx';
 
 export function InputJadwal() {
-  const [classes, setClasses] = useState<any[]>(mockClasses);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  useEffect(() => {
+     apiClient('/sync').then(data => {
+        if(data.classes) setClasses(data.classes);
+        if(data.users) setUsers(data.users);
+        if(data.classes && data.classes.length > 0) {
+           setRombel(data.classes[0].name);
+           setFilterRombel(data.classes[0].name);
+        }
+     });
+  }, []);
+
 
   const [subjects, setSubjects] = useState<any[]>([]);
   useEffect(() => {
@@ -33,7 +45,7 @@ export function InputJadwal() {
           jamSelesai: d.end_time?.substring(0,5),
           mapel: d.subject_name,
           guruId: String(d.teacher_id),
-          guruName: mockUsers.find(u => String(u.id) === String(d.teacher_id))?.name || 'Guru'
+          guruName: users.find((u:any) => String(u.id) === String(d.teacher_id))?.name || 'Guru'
         }));
         setSchedules(mapped);
       }
@@ -45,8 +57,10 @@ export function InputJadwal() {
   };
 
   useEffect(() => {
-    fetchSchedules();
-  }, []);
+    if(users.length > 0) {
+      fetchSchedules();
+    }
+  }, [users]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,7 +74,7 @@ export function InputJadwal() {
   const [guru, setGuru] = useState('');
   
   const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const teachers = mockUsers.filter(u => u.role === 'guru' || u.role === 'walas' || u.role === 'guru_quran');
+  const teachers = users.filter((u:any) => u.role === 'guru' || u.role === 'walas' || u.role === 'guru_quran');
 
   const [filterRombel, setFilterRombel] = useState(classes[0]?.name || '');
   const [filterHari, setFilterHari] = useState('Senin');

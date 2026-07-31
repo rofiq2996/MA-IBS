@@ -5,6 +5,8 @@ import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { mockStudents } from '../data/mock';
+import { apiClient } from '../lib/apiClient';
+import { useEffect } from 'react';
 import { 
   ShieldAlert, CheckCircle2, XCircle, Users, Calendar, CheckSquare, 
   Edit3, CalendarDays, Book, LineChart, ShieldCheck, Heart, Moon, 
@@ -16,6 +18,14 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export function DashboardWalas() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [students, setStudents] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    const myClass = user.className || user.class_name;
+    apiClient('/crud.php?table=students').then(data => {
+      setStudents(data.filter((s:any) => s.class_name === myClass));
+    }).catch(console.error);
+  }, [user]);
   const [selectedDate] = useState(new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
 
   const menuItems = [
@@ -153,7 +163,7 @@ export function DashboardWalas() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {mockStudents.filter(s => s.className === user?.className).slice(0, 5).map((student, idx) => (
+                {students.slice(0, 5).map((student, idx) => (
                   <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-3 font-bold text-slate-800">
                       {student.name}

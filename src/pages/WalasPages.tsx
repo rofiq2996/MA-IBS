@@ -2,17 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { mockStudents } from '../data/mock';
+import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Plus, Edit2, X, Check } from 'lucide-react';
 
+
+function useWalasStudents() {
+  const { user } = useAuth();
+  const [students, setStudents] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    apiClient('/crud.php?table=students').then(data => {
+       // Find students belonging to this walas
+       const myClass = user.className || user.class_name;
+       const filtered = data.filter((s:any) => s.class_name === myClass);
+       setStudents(filtered.map((s:any) => ({ id: String(s.id), name: s.name, nis: s.nis, className: s.class_name })));
+    }).catch(console.error);
+  }, [user]);
+  return students;
+}
+
 export function PemantauanPagi() {
-  const [monitoring, setMonitoring] = useState<Record<string, { kebersihan: string; seragam: string; ketSeragam: string }>>(() => {
-    const initial: Record<string, { kebersihan: string; seragam: string; ketSeragam: string }> = {};
-    mockStudents.forEach(s => {
-      initial[s.id] = { kebersihan: 'Piket', seragam: 'Lengkap', ketSeragam: '' };
+  const students = useWalasStudents();
+  const [monitoring, setMonitoring] = useState<Record<string, { kebersihan: string; seragam: string; ketSeragam: string }>>({});
+  
+  useEffect(() => {
+    setMonitoring(prev => {
+      const initial = { ...prev };
+      students.forEach(s => {
+        if (!initial[s.id]) {
+          initial[s.id] = { kebersihan: 'Piket', seragam: 'Lengkap', ketSeragam: '' };
+        }
+      });
+      return initial;
     });
-    return initial;
-  });
+  }, [students]);
 
   const [motivasiPagi, setMotivasiPagi] = useState('');
 
@@ -55,7 +80,7 @@ export function PemantauanPagi() {
         <CardContent>
           <div className="space-y-4">
             <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-visible">
-              {mockStudents.map((s, index) => (
+              {students.map((s, index) => (
                 <div key={s.id} className={`flex flex-col lg:flex-row lg:items-center justify-between p-3 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                   <div className="flex items-center gap-3 lg:w-1/3 mb-3 lg:mb-0">
                     <span className="text-slate-400 font-medium text-sm w-5">{index + 1}.</span>
@@ -111,13 +136,17 @@ export function PemantauanPagi() {
 }
 
 export function NilaiSikap() {
-  const [grades, setGrades] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
-    mockStudents.forEach(s => {
-      initial[s.id] = 'B';
+  const students = useWalasStudents();
+  const [grades, setGrades] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setGrades(prev => {
+      const initial = { ...prev };
+      students.forEach(s => {
+        if (!initial[s.id]) initial[s.id] = 'B';
+      });
+      return initial;
     });
-    return initial;
-  });
+  }, [students]);
 
   const handleUpdate = (id: string, val: string) => {
     setGrades(prev => ({ ...prev, [id]: val }));
@@ -135,7 +164,7 @@ export function NilaiSikap() {
         <CardContent>
           <div className="space-y-4">
             <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-visible">
-              {mockStudents.map((s, index) => (
+              {students.map((s, index) => (
                 <div key={s.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                   <div className="flex items-center gap-3">
                     <span className="text-slate-400 font-medium text-sm w-5">{index + 1}.</span>
@@ -165,11 +194,12 @@ export function NilaiSikap() {
 }
 
 export function SholatZuhurWalas() {
+  const students = useWalasStudents();
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
+  const { user } = useAuth();
   
-  // Just use mock classes for now
-  const availableClasses = Array.from(new Set(mockStudents.map(s => s.className)));
-  const [selectedClass, setSelectedClass] = useState(availableClasses[0] || '');
+  const selectedClass = user?.className || user?.class_name || '';
+  const availableClasses = [selectedClass];
 
   const today = new Date().toLocaleDateString('id-ID', {
     day: '2-digit',
@@ -251,7 +281,7 @@ export function SholatZuhurWalas() {
             </thead>
             <tbody>
               {showStudents ? (
-                mockStudents.filter(s => s.className === selectedClass).map((s, i) => {
+                students.map((s, i) => {
                   const stat = attendance[s.id]?.status || '';
                   const ket = attendance[s.id]?.ket || '';
                   return (
@@ -311,7 +341,13 @@ export function SholatZuhurWalas() {
 }
 
 export function PrestasiWalas() {
-  const [studentId, setStudentId] = useState(mockStudents[0]?.id || '');
+  const students = useWalasStudents();
+  const [studentId, setStudentId] = useState('');
+  useEffect(() => {
+    if (students.length > 0 && !studentId) {
+       setStudentId(students[0].id);
+    }
+  }, [students]);
   const [jenis, setJenis] = useState('');
   const [keterangan, setKeterangan] = useState('');
 
@@ -336,7 +372,7 @@ export function PrestasiWalas() {
             <CustomSelect
               value={studentId}
               onChange={setStudentId}
-              options={mockStudents.map(s => ({ value: String(s.id), label: s.name }))}
+              options={students.map(s => ({ value: String(s.id), label: s.name }))}
             />
           </div>
           <div className="space-y-1">
@@ -394,7 +430,12 @@ export function BkWalas() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
-  const [studentId, setStudentId] = useState(mockStudents[0]?.id || '');
+  const [studentId, setStudentId] = useState('');
+  useEffect(() => {
+    if (students.length > 0 && !studentId) {
+      setStudentId(students[0].id);
+    }
+  }, [students]);
   const [kasus, setKasus] = useState('');
   const [penanganan, setPenanganan] = useState('');
   const [status, setStatus] = useState('Dalam Proses');
@@ -405,7 +446,7 @@ export function BkWalas() {
       return;
     }
     
-    const student = mockStudents.find(s => s.id === studentId);
+    const student = students.find(s => s.id === studentId);
     
     const newCase = {
       id: Date.now(),
@@ -448,7 +489,7 @@ export function BkWalas() {
     
     setCases([newCase, ...cases]);
     setTanggal(new Date().toISOString().split('T')[0]);
-    setStudentId(mockStudents[0]?.id || '');
+    setStudentId(students[0]?.id || '');
     setKasus('');
     setPenanganan('');
     setStatus('Dalam Proses');
@@ -539,7 +580,7 @@ export function BkWalas() {
                 <CustomSelect
                   value={studentId}
                   onChange={setStudentId}
-                  options={mockStudents.map(s => ({ value: String(s.id), label: s.name }))}
+                  options={students.map(s => ({ value: String(s.id), label: s.name }))}
                 />
               </div>
               <div>
