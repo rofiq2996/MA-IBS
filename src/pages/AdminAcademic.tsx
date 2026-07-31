@@ -78,8 +78,8 @@ export function AdminAcademic() {
     }
     setStudents(c.students);
     setOldName(c.name);
-    const walas = users.find(u => u.role === 'walas' && u.className === c.name);
-    setWaliKelasId(walas ? walas.id : '');
+    const walas = users.find(u => u.id === c.wali_kelas_id) || users.find(u => u.role === 'walas' && (u.class_name || u.className) === c.name);
+    setWaliKelasId(walas ? String(walas.id) : '');
     setIsModalOpen(true);
   };
 
@@ -108,12 +108,24 @@ export function AdminAcademic() {
             await apiClient(`/crud.php?table=classes&id=${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
             // Update walas assignment logic
             if (waliKelasId) {
-               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', class_name: name }) });
+               const wUser = users.find(u => String(u.id) === String(waliKelasId));
+               let currentRoles = wUser?.roles || [wUser?.role || 'guru'];
+               if (typeof currentRoles === 'string') {
+                 try { currentRoles = JSON.parse(currentRoles); } catch(e) { currentRoles = [wUser?.role || 'guru']; }
+               }
+               if (!currentRoles.includes('walas')) currentRoles.push('walas');
+               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', roles: JSON.stringify(currentRoles), class_name: name }) });
             }
         } else {
             await apiClient('/crud.php?table=classes', { method: 'POST', body: JSON.stringify(payload) });
             if (waliKelasId) {
-               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', class_name: name }) });
+               const wUser = users.find(u => String(u.id) === String(waliKelasId));
+               let currentRoles = wUser?.roles || [wUser?.role || 'guru'];
+               if (typeof currentRoles === 'string') {
+                 try { currentRoles = JSON.parse(currentRoles); } catch(e) { currentRoles = [wUser?.role || 'guru']; }
+               }
+               if (!currentRoles.includes('walas')) currentRoles.push('walas');
+               await apiClient(`/crud.php?table=users&id=${waliKelasId}`, { method: 'PUT', body: JSON.stringify({ role: 'walas', roles: JSON.stringify(currentRoles), class_name: name }) });
             }
         }
         fetchData();
@@ -124,8 +136,12 @@ export function AdminAcademic() {
     setIsModalOpen(false);
   };
 
-  const getWaliKelas = (className: string) => {
-    const walas = users.find(u => u.role === 'walas' && u.className === className);
+  const getWaliKelas = (c: any) => {
+    if (c.wali_kelas_id) {
+       const w = users.find(u => u.id === c.wali_kelas_id);
+       if (w) return w.name;
+    }
+    const walas = users.find(u => u.role === 'walas' && (u.class_name || u.className) === c.name);
     return walas ? walas.name : 'Belum Ditugaskan';
   };
 
@@ -146,9 +162,9 @@ export function AdminAcademic() {
             {classes.map(c => (
               <div key={c.id} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <h3 className="font-bold text-lg text-slate-800 mb-1">{c.name}</h3>
-                <p className="text-xs text-slate-500 mb-3">Wali Kelas: <span className="font-semibold text-slate-700">{getWaliKelas(c.name)}</span></p>
+                <p className="text-xs text-slate-500 mb-3">Wali Kelas: <span className="font-semibold text-slate-700">{getWaliKelas(c)}</span></p>
                 <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-3">
-                  <span className="text-slate-600">Siswa: {allStudents.filter(s => s.className === c.name).length}</span>
+                  <span className="text-slate-600">Siswa: {allStudents.filter(s => (s.class_name || s.className) === c.name).length}</span>
                   <div className="flex items-center gap-3">
                     <button onClick={() => openEdit(c)} className="text-emerald-600 hover:text-emerald-700" title="Edit">
                       <Edit2 className="w-4 h-4" />
