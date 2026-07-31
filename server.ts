@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
@@ -28,7 +29,8 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'test',
-  port
+  port,
+  multipleStatements: true
 };
 
 let pool: mysql.Pool;
@@ -62,6 +64,20 @@ async function testPoolAndInit() {
 async function ensureDatabaseColumns() {
   if (pool) {
     try {
+      // Check if users table exists
+      const [tables]: any = await pool.query("SHOW TABLES LIKE 'users'");
+      if (tables.length === 0) {
+        console.log("Database looks empty (no 'users' table). Initializing from database.sql...");
+        const sqlPath = path.join(process.cwd(), 'database.sql');
+        if (fs.existsSync(sqlPath)) {
+          const sql = fs.readFileSync(sqlPath, 'utf8');
+          await pool.query(sql);
+          console.log("Database initialized successfully from database.sql.");
+        } else {
+          console.error("database.sql not found!");
+        }
+      }
+
       // Check if column nuptk exists in users
       const [columnsNuptk]: any = await pool.query("SHOW COLUMNS FROM users LIKE 'nuptk'");
       if (columnsNuptk.length === 0) {
@@ -114,16 +130,44 @@ async function startServer() {
   } else {
 
   
-  // Key-value store endpoint
+  const kvFallback: Record<string, string> = {};
+
   app.all('/api/keyval.php', async (req, res) => {
     try {
+      const method = req.method;
+      if (!pool) {
+        if (method === 'GET') {
+          const key = req.query.key as string;
+          if (key) {
+            res.json({ value: kvFallback[key] !== undefined ? kvFallback[key] : null });
+          } else {
+            res.json(kvFallback);
+          }
+        } else if (method === 'POST') {
+          const { key, value } = req.body;
+          if (!key || value === undefined) return res.status(400).json({ error: 'Missing key or value' });
+          kvFallback[key] = value;
+          res.json({ status: 'success' });
+        } else if (method === 'DELETE') {
+          const key = req.query.key as string;
+          if (key) {
+            delete kvFallback[key];
+          } else {
+            for (let k in kvFallback) delete kvFallback[k];
+          }
+          res.json({ status: 'success' });
+        } else {
+          res.status(405).json({ error: 'Method not allowed' });
+        }
+        return;
+      }
+
       await pool.query(`CREATE TABLE IF NOT EXISTS key_value_store (
         k varchar(255) NOT NULL,
         v longtext NOT NULL,
         PRIMARY KEY (k)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`);
       
-      const method = req.method;
       if (method === 'GET') {
         const key = req.query.key;
         if (key) {
@@ -613,7 +657,6 @@ async function startServer() {
 
 
   // Vite middleware for development
-  }
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -633,4 +676,4 @@ async function startServer() {
   });
 }
 
-startServer();
+}startServer();

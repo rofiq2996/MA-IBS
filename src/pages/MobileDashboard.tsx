@@ -304,12 +304,31 @@ export function MobileDashboard() {
     }
   };
 
-  const allMenus = getRoleMenus();
+  const getRoleSpecificLinkTo = () => {
+    switch (user?.role) {
+      case 'admin': return '/users';
+      case 'guru':
+      case 'guru_quran': return '/absensi';
+      case 'walas': return '/pemantauan';
+      case 'siswa': return '/lms-tugas';
+      case 'wakakurikulum': return '/kurikulum/jadwal';
+      case 'wakakesiswaan': return '/kesiswaan/data';
+      case 'kamad': return '/kamad/materi';
+      case 'bk': return '/preventif';
+      case 'pustaka': return '/koleksi';
+      case 'ortu': return '/anak';
+      default: return '/notifications';
+    }
+  };
+
+  const allMenusRaw = getRoleMenus();
+  const bottomNavPaths = ['/', '/kalender-akademik', '/settings', getRoleSpecificLinkTo()];
+  const allMenus = allMenusRaw.filter(item => !bottomNavPaths.includes(item.to));
 
   // Bottom menu usually contains: Beranda, Kalender, Notifikasi, Setelan.
-  // Thus we put the first 8 items in the grid, and 9th is "Menu Lainnya"
-  const gridItems = allMenus.slice(0, 8);
-  const remainingItems = allMenus.slice(8);
+  // Thus we put the first 7 items in the grid, and 8th is "Menu Lainnya"
+  const gridItems = allMenus.slice(0, 7);
+  const remainingItems = allMenus.slice(7);
 
   
 
@@ -541,7 +560,7 @@ export function MobileDashboard() {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-y-5 gap-x-2">
+          <div className="grid grid-cols-4 gap-y-6 gap-x-2">
             {gridItems.map((item, index) => (
               <motion.button 
                 whileTap={{ scale: 0.9 }}
@@ -549,16 +568,15 @@ export function MobileDashboard() {
                 onClick={() => navigate(item.to)}
                 className="flex flex-col items-center justify-start gap-1.5 transition-all group"
               >
-                <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center border border-slate-100/75 shadow-sm text-slate-600 transition-all group-active:brightness-95`}>
-                  <item.icon className={`w-5 h-5 ${item.color}`} />
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${item.bg} flex items-center justify-center border border-slate-100/75 shadow-sm text-slate-600 transition-all group-active:brightness-95`}>
+                  <item.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${item.color}`} />
                 </div>
-                <span className="text-[9.5px] font-extrabold text-slate-700 text-center leading-tight line-clamp-2 max-w-[76px]">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-700 text-center leading-tight line-clamp-2 max-w-[70px]">
                   {item.label}
                 </span>
               </motion.button>
             ))}
-
-            {/* 9th SLOT: SMART LAINNYA WIDGET */}
+            {/* 8th SLOT: SMART LAINNYA WIDGET */}
             {remainingItems.length > 0 && (
               <motion.button 
                 whileTap={{ scale: 0.9 }}
@@ -568,11 +586,11 @@ export function MobileDashboard() {
                 }}
                 className="flex flex-col items-center justify-start gap-1.5 transition-all group"
               >
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200/50 shadow-sm text-slate-600 group-active:bg-slate-200">
-                  <Grid className="w-5 h-5 text-slate-600 animate-pulse" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200/50 shadow-sm text-slate-600 group-active:bg-slate-200">
+                  <Grid className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600 animate-pulse" />
                 </div>
-                <span className="text-[9.5px] font-extrabold text-slate-700 text-center leading-tight">
-                  Menu Lainnya
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-700 text-center leading-tight">
+                  Menu<br/>Lainnya
                 </span>
               </motion.button>
             )}

@@ -269,20 +269,26 @@ export function AdminSarpras() {
                       </td>
                       <td className="py-3 px-4 text-sm font-bold text-slate-800">{a.quantityGood + a.quantityLight + a.quantityHeavy} Unit</td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-start gap-1 flex-wrap">
                           {a.quantityGood > 0 && (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              Baik: {a.quantityGood}
+                            <span className="inline-block px-2 py-0.5 sm:px-2.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                              <span className="sm:hidden">B: </span>
+                              <span className="hidden sm:inline">Baik: </span>
+                              {a.quantityGood}
                             </span>
                           )}
                           {a.quantityLight > 0 && (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                              Rusak Ringan: {a.quantityLight}
+                            <span className="inline-block px-2 py-0.5 sm:px-2.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
+                              <span className="sm:hidden">RR: </span>
+                              <span className="hidden sm:inline">Rusak Ringan: </span>
+                              {a.quantityLight}
                             </span>
                           )}
                           {a.quantityHeavy > 0 && (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200">
-                              Rusak Berat: {a.quantityHeavy}
+                            <span className="inline-block px-2 py-0.5 sm:px-2.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-800 border border-red-200 whitespace-nowrap">
+                              <span className="sm:hidden">RB: </span>
+                              <span className="hidden sm:inline">Rusak Berat: </span>
+                              {a.quantityHeavy}
                             </span>
                           )}
                         </div>
@@ -322,8 +328,8 @@ export function AdminSarpras() {
 
       {/* CONFIRMATION DELETION MODAL */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-visible">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/40 backdrop-blur-sm pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden my-auto flex flex-col">
             <div className="p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-600">
                 <AlertCircle className="w-6 h-6" />
@@ -351,9 +357,9 @@ export function AdminSarpras() {
 
       {/* ADD / EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-visible my-8">
-            <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto scrollbar-hide pb-20 sm:pb-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden my-auto flex flex-col max-h-[82vh] sm:max-h-[90vh]">
+            <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100 shrink-0">
               <h2 className="font-bold text-lg text-slate-800">
                 {editingId ? 'Edit Aset Madrasah' : 'Registrasi Aset Baru'}
               </h2>
@@ -361,8 +367,9 @@ export function AdminSarpras() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
-              <div className="space-y-4">
+            <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 md:p-6 space-y-4 overflow-y-auto scrollbar-hide">
+                <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Nama Barang / Fasilitas</label>
                   <input
@@ -439,8 +446,9 @@ export function AdminSarpras() {
                    <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-200">Total Unit Aset: <span className="font-bold text-slate-700">{Number(quantityGood) + Number(quantityLight) + Number(quantityHeavy)}</span></p>
                 </div>
               </div>
+              </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <div className="flex gap-3 p-4 md:p-6 border-t border-slate-100 shrink-0 bg-slate-50">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

@@ -375,7 +375,7 @@ export function AdminCalendar() {
               <p className="text-slate-500 text-[10px] sm:text-xs mt-0.5">Semua agenda dan kegiatan akademik pada bulan aktif.</p>
             </div>
             {/* Show total count */}
-            <span className="px-2.5 py-0.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
+            <span className="px-2.5 py-0.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full whitespace-nowrap shrink-0">
               {currentMonthAgenda.length} Event
             </span>
           </div>
@@ -443,8 +443,8 @@ export function AdminCalendar() {
       </Card>
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-visible">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/40 backdrop-blur-sm pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden my-auto flex flex-col">
             <div className="p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-600">
                 <AlertCircle className="w-6 h-6" />
@@ -471,8 +471,8 @@ export function AdminCalendar() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-sm rounded-xl overflow-visible shadow-xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-2.5 sm:p-4 pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-sm rounded-xl overflow-hidden shadow-xl my-auto flex flex-col max-h-[82vh] sm:max-h-[90vh]">
             <div className="flex justify-between items-center p-4 border-b border-slate-100">
               <h2 className="font-bold text-slate-800">{editingId ? 'Edit Agenda' : 'Tambah Agenda'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">

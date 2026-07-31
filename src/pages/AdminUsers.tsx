@@ -665,7 +665,64 @@ export function AdminUsers() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile View: Cards */}
+          <div className="block md:hidden">
+            {filteredUsers.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {filteredUsers.map(u => (
+                  <div key={u.id} className="p-4 bg-white border border-slate-200 rounded-xl flex flex-col gap-3 transition-shadow">
+                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                         <UserAvatar src={u.avatar} name={u.name} className="w-full h-full" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-slate-800 text-sm leading-tight">{u.name}</p>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{u.username}</p>
+                      </div>
+                      {!isWalas && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button onClick={() => openEditModal(u)} className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteConfirmId(u.id)} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Hapus">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {(u.roles && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
+                          <span key={r} className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-wider">
+                            {r.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 mt-0.5">
+                        {u.nuptk && (
+                          <p>NIPTK: <span className="font-mono font-semibold text-slate-800">{u.nuptk}</span></p>
+                        )}
+                        {(u.roles || [u.role]).includes('walas') && u.className && (
+                          <p>Kelas: <span className="font-semibold text-slate-800">{u.className}</span></p>
+                        )}
+                        {(u.roles || [u.role]).includes('ortu') && u.childName && (
+                          <p>Anak: <span className="font-semibold text-slate-800">{u.childName}</span></p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-500 text-sm border border-slate-200 rounded-xl bg-slate-50">
+                Tidak ada pengguna yang ditemukan.
+              </div>
+            )}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 text-xs text-slate-500 uppercase">
@@ -742,8 +799,8 @@ export function AdminUsers() {
 
       {/* MODAL DELETE CONFIRMATION */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-visible">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm pb-16 sm:pb-0">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-visible my-auto">
             <div className="p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-600">
                 <AlertCircle className="w-6 h-6" />
@@ -771,34 +828,34 @@ export function AdminUsers() {
 
       {/* MODAL USER */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-visible my-8">
-            <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100">
-              <h2 className="font-bold text-lg text-slate-800">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto scrollbar-hide pb-20 sm:pb-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh] sm:max-h-[90vh] overflow-hidden border border-slate-100 my-auto">
+            <div className="flex justify-between items-center px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-100 flex-shrink-0 bg-slate-50/80">
+              <h2 className="font-bold text-base sm:text-lg text-slate-800">
                 {editingId ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleSave} className="p-4 md:p-6 space-y-4">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Nama Lengkap</label>
+            <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto scrollbar-hide">
+                <div className="space-y-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Nama Lengkap</label>
                   <input
                     type="text"
                     required
                     placeholder="Masukkan nama lengkap..."
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+                    className="w-full px-3 py-2 sm:py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
                   />
                 </div>
 
                 {userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan', 'admin'].includes(r)) && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">
                       {userRoles.includes('admin') && !userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) ? 'Username / NUPTK' : 'NIPTK / NUPTK'}
                     </label>
                     <input
@@ -807,49 +864,47 @@ export function AdminUsers() {
                       placeholder={userRoles.includes('admin') && !userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) ? 'Masukkan Username atau NUPTK...' : 'Masukkan NIPTK atau NUPTK...'}
                       value={userNuptk}
                       onChange={(e) => setUserNuptk(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
+                      className="w-full px-3 py-2 sm:py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
                     />
-                    <p className="text-[10px] text-slate-500 font-medium">Bisa digunakan untuk login, dan sistem juga akan otomatis membuatkan username dari nama depan.</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium leading-tight">Bisa digunakan untuk login, dan sistem juga akan otomatis membuatkan username dari nama depan.</p>
                   </div>
                 )}
 
                 {!editingId ? (
-                  <div className="col-span-2 text-xs text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <span className="font-bold text-blue-700">Info:</span> Username login akan otomatis dibuat dari nama depan ustadz/ustadzah atau siswa. Guru & tendik juga bisa login menggunakan NIPTK / NUPTK. Password default adalah 12345.
+                  <div className="text-[11px] sm:text-xs text-slate-600 bg-blue-50/80 p-3 rounded-xl border border-blue-100/80 leading-relaxed">
+                    <span className="font-bold text-blue-700">Info:</span> Username login akan otomatis dibuat dari nama depan. Guru & tendik juga bisa login menggunakan NIPTK / NUPTK. Password default: <code className="font-bold text-blue-800 bg-blue-100 px-1 py-0.5 rounded">12345</code>.
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-emerald-700 uppercase tracking-wider">Reset Password (Opsional)</label>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] sm:text-xs font-bold text-emerald-700 uppercase tracking-wider">Reset Password (Opsional)</label>
                     <input
                       type="text"
                       placeholder="Masukkan password baru (kosongkan jika tidak diubah)"
                       value={userPassword}
                       onChange={(e) => setUserPassword(e.target.value)}
-                      className="w-full px-3 py-2 border border-emerald-200 rounded-lg text-sm focus:border-emerald-500 outline-none bg-emerald-50"
+                      className="w-full px-3 py-2 sm:py-2.5 border border-emerald-200 rounded-xl text-xs sm:text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none bg-emerald-50/60 transition-all"
                     />
                   </div>
                 )}
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Peran (Role)</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="space-y-1">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Peran (Role)</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-200/80">
                     {[
                       { value: 'guru', label: 'Guru' },
                       { value: 'walas', label: 'Wali Kelas' },
                       { value: 'guru_quran', label: 'Guru Qur\'an' },
                       { value: 'bk', label: 'Guru BK' },
                       { value: 'pustaka', label: 'Pustakawan' },
-                      { value: 'kamad', label: 'Kepala Madrasah' },
-                      { value: 'wakakurikulum', label: 'Waka Kurikulum' },
-                      { value: 'wakakesiswaan', label: 'Waka Kesiswaan' },
-                      { value: 'ortu', label: 'Orang Tua' },
-                      { value: 'siswa', label: 'Siswa' },
+                      { value: 'kamad', label: 'Kamad' },
+                      { value: 'wakakurikulum', label: 'Wakakur' },
+                      { value: 'wakakesiswaan', label: 'Wakasis' },
                       { value: 'admin', label: 'Admin' },
                     ].map((roleOpt) => (
-                      <label key={roleOpt.value} className="flex items-center space-x-2 text-sm cursor-pointer">
+                      <label key={roleOpt.value} className="flex items-center space-x-1.5 sm:space-x-2 cursor-pointer p-1.5 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200/60 transition-all select-none">
                         <input
                           type="checkbox"
-                          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0"
                           checked={userRoles.includes(roleOpt.value as Role)}
                           onChange={(e) => {
                             if (e.target.checked) {
@@ -866,15 +921,15 @@ export function AdminUsers() {
                             }
                           }}
                         />
-                        <span className="text-slate-700 font-medium">{roleOpt.label}</span>
+                        <span className="text-slate-700 font-semibold text-xs sm:text-sm truncate">{roleOpt.label}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 {userRoles.some(r => ['guru', 'walas', 'guru_quran', 'bk', 'pustaka', 'kamad', 'wakakurikulum', 'wakakesiswaan'].includes(r)) && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Panggilan (Gender)</label>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Panggilan (Gender)</label>
                     <CustomSelect
                       value={userGender}
                       onChange={(val) => setUserGender(val as 'L' | 'P')}
@@ -887,11 +942,9 @@ export function AdminUsers() {
                   </div>
                 )}
 
-
-                
                 {userRoles.includes('ortu') && (
-                  <div className="space-y-1.5 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Nama Anak (Data Siswa)</label>
+                  <div className="space-y-1 p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Nama Anak (Data Siswa)</label>
                     <CustomSelect
                       value={userChildId}
                       onChange={(val) => setUserChildId(val)}
@@ -904,8 +957,8 @@ export function AdminUsers() {
                 )}
 
                 {userRoles.includes('walas') && (
-                  <div className="space-y-1.5 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kelas (Wali Kelas)</label>
+                  <div className="space-y-1 p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                    <label className="block text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Kelas (Wali Kelas)</label>
                     <CustomSelect
                       value={userClassName}
                       onChange={(val) => setUserClassName(val)}
@@ -914,22 +967,22 @@ export function AdminUsers() {
                     />
                   </div>
                 )}
-  
               </div>
 
-              <div className="flex gap-3 pt-4 mt-4 border-t border-slate-100">
+              <div className="flex gap-2.5 sm:gap-3 p-3.5 sm:p-5 border-t border-slate-100 flex-shrink-0 bg-slate-50/80">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors"
+                  className="flex-1 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition-colors text-center"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                  className="flex-1 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                 >
-                  <Check className="w-4 h-4" /> {editingId ? 'Simpan Perubahan' : 'Tambahkan'}
+                  <Check className="w-4 h-4 shrink-0" /> 
+                  <span>{editingId ? 'Simpan Perubahan' : 'Tambahkan'}</span>
                 </button>
               </div>
             </form>

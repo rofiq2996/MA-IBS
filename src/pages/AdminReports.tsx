@@ -394,8 +394,8 @@ export function AdminReports() {
       </div>
 
       {isPreviewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto pb-20 sm:pb-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[82vh] sm:max-h-[90vh] my-auto">
             <div className="flex justify-between items-center p-4 md:p-6 border-b border-slate-100 shrink-0">
               <h2 className="font-bold text-lg text-slate-800">
                 Preview Laporan

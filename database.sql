@@ -6,6 +6,7 @@
 -- Disable foreign key checks temporarily to drop tables in any order
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `agenda`;
+DROP TABLE IF EXISTS `key_value_store`;
 DROP TABLE IF EXISTS `materi_objectives`;
 DROP TABLE IF EXISTS `materi_ajar`;
 DROP TABLE IF EXISTS `kinerja_staf`;
@@ -379,6 +380,15 @@ CREATE TABLE `agenda` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ==========================================
+-- 24. TABEL PENGATURAN / SETTINGS (KEY-VALUE STORE)
+-- ==========================================
+CREATE TABLE `key_value_store` (
+  `k` varchar(255) NOT NULL,
+  `v` longtext NOT NULL,
+  PRIMARY KEY (`k`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- ========================================================
 -- SEED DATA (DATA AWAL & CONTOH UNTUK SISTEM)
@@ -539,3 +549,31 @@ INSERT INTO `agenda` (`id`, `date`, `event`, `type`, `color`) VALUES
 (1, '2026-07-15', 'Hari Pertama Masuk Sekolah', 'Umum', 'bg-emerald-100 text-emerald-800'),
 (2, '2026-08-17', 'Upacara HUT RI', 'Libur Nasional', 'bg-red-100 text-red-800'),
 (3, '2026-09-21', 'Penilaian Tengah Semester (PTS)', 'Ujian', 'bg-amber-100 text-amber-800');
+
+-- Seed Settings
+INSERT INTO `key_value_store` (`k`, `v`) VALUES
+('school_lat_l', '-0.502'),
+('school_lng_l', '101.447'),
+('school_radius_l', '200'),
+('school_lat_p', '-0.502'),
+('school_lng_p', '101.447'),
+('school_radius_p', '200'),
+('limit_absen_siswa', '15:00'),
+('limit_absen_zuhur', '13:00'),
+('selectedAcademicTermId', '1'),
+('app_teaching_assignments', '[]'),
+('bk_advokasi_data', '[]'),
+('bk_cases_data', '[]'),
+('bk_pengembangan_data', '[]'),
+('bk_penyaluran_data', '[]'),
+('bk_preventif_data', '[]'),
+('bk_rekomendasi_sp', '[]'),
+('cbt_banksoal_data', '[]'),
+('cbt_exams_data', '[]'),
+('guru_subjects', '[]'),
+('kesiswaan_ekskul_data', '[]'),
+('kesiswaan_pelanggaran_data', '[]'),
+('mockAcademicTerms', '[]'),
+('mockAgenda', '[]'),
+('mockStudents', '[]'),
+('walas_cases_data', '[]');

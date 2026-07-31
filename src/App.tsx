@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import BackButtonHandler from "./components/BackButtonHandler";
 import { AppLayout } from './components/layout/AppLayout';
 import { Login } from './pages/Login';
 import { DashboardGuru } from './pages/DashboardGuru';
@@ -145,6 +146,7 @@ function RoleBasedDashboard() {
 export default function App() {
   return (
     <BrowserRouter>
+      <BackButtonHandler />
       <DataSyncLayer>
         <AuthProvider>
           <Routes>

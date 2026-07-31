@@ -409,8 +409,8 @@ export function CBT() {
 
       {/* Modal Buat Ujian */}
       {showExamModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-visible flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-sm pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[82vh] sm:max-h-[90vh] my-auto">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-800">Buat Ujian Baru</h2>
               <button onClick={() => setShowExamModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
@@ -488,8 +488,8 @@ export function CBT() {
 
       {/* Modal Buat Soal */}
       {showQuestionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-sm pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[82vh] sm:max-h-[90vh] my-auto">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-800">Buat Soal Baru</h2>
               <button onClick={() => setShowQuestionModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
@@ -583,8 +583,8 @@ export function CBT() {
 
       {/* Modal Kelola Bank Soal */}
       {showBankModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-visible flex flex-col h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/50 backdrop-blur-sm pb-20 sm:pb-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[82vh] sm:max-h-[90vh] my-auto">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h2 className="text-lg font-bold text-slate-800">Bank Soal ({bankSoal.length})</h2>
               <button onClick={() => setShowBankModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
