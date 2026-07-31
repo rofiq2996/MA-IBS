@@ -83,9 +83,14 @@ export function AdminAcademic() {
     setIsModalOpen(true);
   };
 
-  const confirmDeleteClass = () => {
+  const confirmDeleteClass = async () => {
     if (deleteConfirmId) {
-      setClasses(classes.filter(c => c.id !== deleteConfirmId));
+      try {
+        await apiClient(`/crud.php?table=classes&id=${deleteConfirmId}`, { method: 'DELETE' });
+        fetchData();
+      } catch (e) {
+        console.error(e);
+      }
       setDeleteConfirmId(null);
     }
   };
