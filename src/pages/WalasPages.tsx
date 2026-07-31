@@ -336,7 +336,7 @@ export function PrestasiWalas() {
             <CustomSelect
               value={studentId}
               onChange={setStudentId}
-              options={mockStudents.map(s => ({ value: s.id, label: s.name }))}
+              options={mockStudents.map(s => ({ value: String(s.id), label: s.name }))}
             />
           </div>
           <div className="space-y-1">
@@ -539,7 +539,7 @@ export function BkWalas() {
                 <CustomSelect
                   value={studentId}
                   onChange={setStudentId}
-                  options={mockStudents.map(s => ({ value: s.id, label: s.name }))}
+                  options={mockStudents.map(s => ({ value: String(s.id), label: s.name }))}
                 />
               </div>
               <div>

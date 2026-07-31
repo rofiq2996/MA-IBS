@@ -254,7 +254,7 @@ export function KesiswaanPrestasiPelanggaran() {
                   <CustomSelect
                     value={formPelanggaran.studentId}
                     onChange={(v) => setFormPelanggaran({...formPelanggaran, studentId: v})}
-                    options={mockStudents.map(s => ({ value: s.id, label: `${s.name} (${s.kelas})` }))}
+                    options={mockStudents.map(s => ({ value: String(s.id), label: `${s.name} (${s.kelas})` }))}
                   />
                 </div>
               ) : (

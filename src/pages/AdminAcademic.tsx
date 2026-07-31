@@ -247,7 +247,7 @@ export function AdminAcademic() {
                     onChange={(val) => setWaliKelasId(val)}
                     options={[
                       { value: '', label: '-- Pilih Wali Kelas --' },
-                      ...teachers.map(t => ({ value: t.id, label: t.name }))
+                      ...teachers.map(t => ({ value: String(t.id), label: t.name }))
                     ]}
                     searchable={true}
                     placeholder="-- Pilih Wali Kelas --"

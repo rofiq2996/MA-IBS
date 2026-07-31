@@ -415,7 +415,7 @@ export function InputJadwal() {
                 <CustomSelect 
                   value={guru}
                   onChange={v => setGuru(v)}
-                  options={teachers.map(t => ({ value: t.id, label: t.name }))}
+                  options={teachers.map(t => ({ value: String(t.id), label: t.name }))}
                   placeholder="Pilih Guru"
                   searchable={true}
                 />

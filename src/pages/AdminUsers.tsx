@@ -948,7 +948,7 @@ export function AdminUsers() {
                     <CustomSelect
                       value={userChildId}
                       onChange={(val) => setUserChildId(val)}
-                      options={students.map((s: any) => ({ value: s.id, label: `${s.name} - ${s.className}` }))}
+                      options={students.map((s: any) => ({ value: String(s.id), label: `${s.name} - ${s.className}` }))}
                       placeholder="-- Pilih Anak --"
                       required
                       searchable={true}
