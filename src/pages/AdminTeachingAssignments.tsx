@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, X, Check, Search, UserCheck, Download, Upload } fr
 import { mockClasses, mockUsers, mockSubjects } from '../data/mock';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { dbClient } from '../lib/dbClient';
+import { apiClient } from '../lib/apiClient';
 import * as XLSX from 'xlsx';
 
 interface TeachingAssignment {
@@ -16,36 +17,68 @@ interface TeachingAssignment {
 }
 
 export function AdminTeachingAssignments() {
-  const [classes, setClasses] = useState(mockClasses);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
 
-  const [users, setUsers] = useState<any[]>(() => {
-    return mockUsers;
-  });
-
-  const [assignments, setAssignments] = useState<TeachingAssignment[]>(() => {
-    const saved = remoteStorage.getItem('app_teaching_assignments');
-    return [];
-  });
-  
   useEffect(() => {
-    remoteStorage.setItem('app_teaching_assignments', JSON.stringify(assignments));
-  }, [assignments]);
+    Promise.all([
+      apiClient('/crud.php?table=classes'),
+      apiClient('/crud.php?table=users')
+    ]).then(([classesData, usersData]) => {
+      if (Array.isArray(classesData)) {
+        setClasses(classesData);
+        if (classesData.length > 0) {
+          setRombel(classesData[0].name);
+        }
+      }
+      if (Array.isArray(usersData)) setUsers(usersData);
+    });
+  }, []);
+
+  const [assignments, setAssignments] = useState<TeachingAssignment[]>([]);
+
+  const fetchAssignments = async () => {
+    try {
+      const data = await apiClient('/crud.php?table=teaching_assignments');
+      if (Array.isArray(data)) {
+        setAssignments(data.map((d: any) => ({
+          id: String(d.id),
+          rombel: d.rombel || d.class_name,
+          mapel: d.mapel || d.subject_name,
+          guruId: String(d.guruId || d.guru_id || d.teacher_id)
+        })));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssignments();
+  }, []);
   
   const [subjects, setSubjects] = useState<any[]>([]);
   useEffect(() => {
     dbClient.get('subjects').then(data => {
-      if (Array.isArray(data)) setSubjects(data);
+      if (Array.isArray(data)) {
+        setSubjects(data);
+        if (data.length > 0) {
+          setMapel(data[0].name);
+        }
+      }
     });
   }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [rombel, setRombel] = useState(classes[0]?.name || '');
   const [mapel, setMapel] = useState(subjects[0]?.name || '');
   const [guru, setGuru] = useState('');
   
-  const teachers = users.filter(u => u.role === 'guru' || u.role === 'walas' || u.role === 'guru_quran');
+  const teachers = users.filter(u => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru'));
 
   const [filterRombel, setFilterRombel] = useState('');
   const [filterMapel, setFilterMapel] = useState('');
@@ -106,23 +139,42 @@ export function AdminTeachingAssignments() {
         });
 
         if (newAssignments.length > 0) {
-          // Merge avoiding duplicates (same class & mapel)
-          const merged = [...assignments];
-          newAssignments.forEach(na => {
-            const idx = merged.findIndex(a => a.rombel === na.rombel && a.mapel === na.mapel);
-            if (idx >= 0) {
-              merged[idx] = na; // Update existing
+          // Send all new assignments to the database
+          const savePromises = newAssignments.map(na => {
+            const existing = assignments.find(a => a.rombel === na.rombel && a.mapel === na.mapel);
+            if (existing) {
+              return apiClient(`/crud.php?table=teaching_assignments&id=${existing.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  class_name: na.rombel,
+                  subject_name: na.mapel,
+                  teacher_id: na.guruId
+                })
+              });
             } else {
-              merged.push(na);
+              return apiClient(`/crud.php?table=teaching_assignments`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  class_name: na.rombel,
+                  subject_name: na.mapel,
+                  teacher_id: na.guruId
+                })
+              });
             }
           });
-          setAssignments(merged);
           
-          if (errors.length > 0) {
-            window.alert(`Berhasil mengimpor ${newAssignments.length} plotting. Namun ada beberapa error:\n\n${errors.join('\n')}`);
-          } else {
-            window.alert(`Berhasil mengimpor ${newAssignments.length} plotting pengajar!`);
-          }
+          Promise.all(savePromises).then(() => {
+            fetchAssignments();
+            if (errors.length > 0) {
+              window.alert(`Berhasil mengimpor ${newAssignments.length} plotting. Namun ada beberapa error:\n\n${errors.join('\n')}`);
+            } else {
+              window.alert(`Berhasil mengimpor ${newAssignments.length} plotting pengajar!`);
+            }
+          }).catch(err => {
+            console.error("Failed saving imported assignments:", err);
+            window.alert("Beberapa data gagal disimpan ke database.");
+            fetchAssignments();
+          });
         } else {
           window.alert("Tidak ada data plotting valid yang ditemukan pada file.");
         }
@@ -152,13 +204,25 @@ export function AdminTeachingAssignments() {
     setIsModalOpen(true);
   };
   
-  const handleDelete = (id: string) => {
-    if (window.confirm('Hapus plotting pengajar ini?')) {
-      setAssignments(assignments.filter(a => a.id !== id));
+  const handleDeleteClick = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await apiClient(`/crud.php?table=teaching_assignments&id=${deleteId}`, { method: 'DELETE' });
+      setAssignments(assignments.filter(a => a.id !== deleteId));
+      setIsDeleteModalOpen(false);
+      setDeleteId(null);
+    } catch (e) {
+      window.alert('Gagal menghapus data.');
+      console.error(e);
     }
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!rombel || !mapel || !guru) {
       window.alert('Mohon lengkapi data (Kelas, Mata Pelajaran, dan Guru)!');
       return;
@@ -166,27 +230,38 @@ export function AdminTeachingAssignments() {
     
     const guruData = teachers.find(t => t.id === guru);
     
-    const newAssignment = {
-      id: editingId || Date.now().toString(),
-      rombel,
-      mapel,
-      guruId: guru,
-      guruName: guruData?.name || ''
-    };
-    
     const exists = assignments.find(a => a.rombel === rombel && a.mapel === mapel && a.id !== editingId);
     if (exists) {
       window.alert('Mata pelajaran ini sudah memiliki guru untuk kelas tersebut!');
       return;
     }
     
-    if (editingId) {
-      setAssignments(assignments.map(a => a.id === editingId ? newAssignment : a));
-    } else {
-      setAssignments([...assignments, newAssignment]);
+    try {
+      if (editingId) {
+        await apiClient(`/crud.php?table=teaching_assignments&id=${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            class_name: rombel,
+            subject_name: mapel,
+            teacher_id: guru
+          })
+        });
+      } else {
+        await apiClient(`/crud.php?table=teaching_assignments`, {
+          method: 'POST',
+          body: JSON.stringify({
+            class_name: rombel,
+            subject_name: mapel,
+            teacher_id: guru
+          })
+        });
+      }
+      fetchAssignments();
+      setIsModalOpen(false);
+    } catch (e) {
+      window.alert('Gagal menyimpan data.');
+      console.error(e);
     }
-    
-    setIsModalOpen(false);
   };
 
   const filteredAssignments = assignments
@@ -276,34 +351,67 @@ export function AdminTeachingAssignments() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAssignments.map(a => (
+                  filteredAssignments.map(a => {
+                    const teacher = users.find(u => String(u.id) === String(a.guruId));
+                    const displayName = teacher ? teacher.name : 'Guru Tidak Ditemukan';
+                    return (
                     <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 font-bold text-slate-800">{a.rombel}</td>
                       <td className="py-3 px-4 font-medium text-slate-700">{a.mapel}</td>
                       <td className="py-3 px-4 text-slate-600 flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px] shrink-0">
-                          {a.guruName.charAt(0)}
+                          {displayName.charAt(0)}
                         </div>
-                        {a.guruName}
+                        {displayName}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => openEdit(a)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors">
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors">
+                          <button onClick={() => handleDeleteClick(a.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors" title="Hapus Plotting">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-2">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Hapus Plotting?</h3>
+              <p className="text-sm text-slate-500">
+                Tindakan ini tidak dapat dibatalkan. Plotting pengajar untuk mata pelajaran dan kelas ini akan dihapus permanen.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg text-sm transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg text-sm transition-colors"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-2.5 sm:p-4 pb-20 sm:pb-4 overflow-y-auto">

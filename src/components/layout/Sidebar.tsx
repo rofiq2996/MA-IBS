@@ -81,7 +81,6 @@ export function Sidebar() {
         { to: '/users', icon: UserCheck, label: 'Akun Pengguna' },
         { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
         { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
-        { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
         { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
         { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
@@ -201,13 +200,23 @@ export function Sidebar() {
       const quranLinks = [
         { to: '/', icon: Home, label: 'Beranda' },
         { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
-        { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar' },
-        { to: '/absensi', icon: CheckSquare, label: 'Absensi Mapel' },
+        { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
+        { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
         { to: '/guru-quran/dhuha', icon: Heart, label: 'Absensi Dhuha' },
-        { to: '/guru-quran/laporan', icon: FileBarChart, label: 'Laporan Dhuha' },
+        { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
+        { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
+        { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
+        { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar' },
+        { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
+        { to: '/laporan', icon: FileText, label: 'Laporan' },
         { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur' },
+        { to: '/leave', icon: ClipboardList, label: 'Form Perizinan' },
+        { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru' },
       ];
-      if (teachesXII) quranLinks.splice(5, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      if (teachesXII) {
+        quranLinks.splice(9, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas' });
+        quranLinks.splice(10, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT' });
+      }
       return quranLinks;
     }
     
@@ -227,7 +236,7 @@ export function Sidebar() {
     <aside className="hidden sm:flex flex-col w-64 bg-emerald-900 text-white h-screen shrink-0">
       <div className="p-6 border-b border-emerald-800/50">
         <div className="flex items-center space-x-3">
-          <img src="https://lh3.googleusercontent.com/d/1zjkq3eRW8Q_BQSZhAbb6gMgcVwPHAQcc" alt="Logo" className="h-10 w-auto max-w-[120px] object-contain shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          <img src="https://iili.io/COPrcyG.png" alt="Logo" className="h-10 w-auto max-w-[120px] object-contain shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
           <div className="leading-none">
             <h1 className="font-bold text-sm uppercase tracking-wider line-clamp-2">SIKAT MA AL-IHSAN<br/>IBS Riau</h1>
             <span className="text-[10px] text-emerald-400 font-medium tracking-widest mt-1 inline-block">SYSTEM v1.0</span>

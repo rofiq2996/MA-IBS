@@ -1,15 +1,65 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Book, Plus, Search, Check, FileCheck } from 'lucide-react';
+import { Book, Plus, Search, Check, FileCheck, Save } from 'lucide-react';
+import { CustomSelect } from '../components/ui/CustomSelect';
+
+const JUZ_OPTIONS = Array.from({ length: 30 }, (_, i) => ({
+  value: String(i + 1),
+  label: `Juz ${i + 1}`
+}));
+
+const JUZ_30_SURAHS = [
+  "An-Naba'", "An-Nazi'at", "'Abasa", "At-Takwir", "Al-Infitar",
+  "Al-Mutaffifin", "Al-Inshiqaq", "Al-Buruj", "At-Tariq", "Al-A'la",
+  "Al-Ghashiyah", "Al-Fajr", "Al-Balad", "Ash-Shams", "Al-Lail",
+  "Ad-Duha", "Ash-Sharh", "At-Tin", "Al-'Alaq", "Al-Qadr",
+  "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat", "Al-Qari'ah", "At-Takathur",
+  "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraish", "Al-Ma'un",
+  "Al-Kauthar", "Al-Kafirun", "An-Nasr", "Al-Masad", "Al-Ikhlas",
+  "Al-Falaq", "An-Nas"
+];
+
+// Mock data generator for other Juz
+const getSurahsForJuz = (juz: string) => {
+  if (juz === '30') return JUZ_30_SURAHS;
+  if (juz === '29') return ["Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddaththir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat"];
+  if (juz === '1') return ["Al-Fatihah", "Al-Baqarah (1-141)"];
+  return [`Surah 1 (Juz ${juz})`, `Surah 2 (Juz ${juz})`, `Surah 3 (Juz ${juz})`];
+};
 
 export function GuruQuranHafalan() {
-  const [search, setSearch] = useState('');
-  
   const studentList = [
-    { id: 1, name: 'Ahmad Fauzi', nis: '10112233', class: 'XII-IPA 1', target: '3 Juz', achieved: '2 Juz' },
-    { id: 2, name: 'Siti Nurhaliza', nis: '10112244', class: 'X-1', target: '1 Juz', achieved: 'Surah Al-Mulk' },
-    { id: 3, name: 'Rizky Ramadhan', nis: '10112277', class: 'XI-IPS 2', target: '2 Juz', achieved: '1.5 Juz' },
+    { id: '1', name: 'Ahmad Fauzi', nis: '10112233', class: 'XII-IPA 1' },
+    { id: '2', name: 'Siti Nurhaliza', nis: '10112244', class: 'X-1' },
+    { id: '3', name: 'Rizky Ramadhan', nis: '10112277', class: 'XI-IPS 2' },
   ];
+
+  const studentOptions = studentList.map(s => ({
+    value: s.id,
+    label: `${s.name} (${s.class})`
+  }));
+
+  const [selectedJuz, setSelectedJuz] = useState('');
+  const [selectedSiswa, setSelectedSiswa] = useState('');
+
+  // grades state keyed by `${siswaId}-${juz}-${surah}`
+  const [grades, setGrades] = useState<Record<string, string>>({});
+
+  const handleGrade = (surah: string, grade: string) => {
+    if (!selectedSiswa || !selectedJuz) return;
+    const key = `${selectedSiswa}-${selectedJuz}-${surah}`;
+    setGrades(prev => ({ ...prev, [key]: prev[key] === grade ? '' : grade }));
+  };
+
+  const handleSave = () => {
+    if (!selectedSiswa || !selectedJuz) {
+      window.alert('Pilih Siswa dan Juz terlebih dahulu!');
+      return;
+    }
+    window.alert('Nilai hafalan berhasil disimpan!');
+  };
+
+  const surahsToDisplay = selectedJuz && selectedSiswa ? getSurahsForJuz(selectedJuz) : [];
 
   return (
     <div className="space-y-6">
@@ -42,53 +92,99 @@ export function GuruQuranHafalan() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-slate-100 pb-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle>Daftar Siswa Bimbingan Tahfiz</CardTitle>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari siswa atau NIS..."
-                className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-full md:w-64"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+            <CardTitle>Penilaian Setoran Hafalan</CardTitle>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <div className="w-full sm:w-48">
+                <CustomSelect
+                  value={selectedSiswa}
+                  onChange={setSelectedSiswa}
+                  options={[{ value: '', label: 'Pilih Siswa' }, ...studentOptions]}
+                />
+              </div>
+              <div className="w-full sm:w-32">
+                <CustomSelect
+                  value={selectedJuz}
+                  onChange={setSelectedJuz}
+                  options={[{ value: '', label: 'Pilih Juz' }, ...JUZ_OPTIONS]}
+                />
+              </div>
+              <button
+                onClick={handleSave}
+                className="w-full md:w-auto px-4 py-2 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-sm whitespace-nowrap"
+              >
+                <Save className="w-4 h-4" /> Simpan
+              </button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3">Nama Siswa / NIS</th>
-                  <th className="px-4 py-3">Kelas</th>
-                  <th className="px-4 py-3">Target Tahunan</th>
-                  <th className="px-4 py-3">Capaian Saat Ini</th>
-                  <th className="px-4 py-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {studentList.map(item => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-bold text-slate-800">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.nis}</p>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{item.class}</td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{item.target}</td>
-                    <td className="px-4 py-3 font-bold text-emerald-600">{item.achieved}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-colors">
-                        Input Setoran
-                      </button>
-                    </td>
+        <CardContent className="pt-4">
+          {(!selectedJuz || !selectedSiswa) ? (
+            <div className="py-16 text-center text-slate-500 flex flex-col items-center justify-center">
+              <Book className="w-12 h-12 text-slate-300 mb-3" />
+              <p className="font-medium text-slate-600">Pilih Siswa dan Juz</p>
+              <p className="text-sm">Silakan pilih siswa dan juz untuk mulai menilai setoran.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-3">No</th>
+                    <th className="px-4 py-3">Nama Surat</th>
+                    <th className="px-4 py-3 text-center min-w-[300px]">Penilaian</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {surahsToDisplay.map((surah, idx) => {
+                    const key = `${selectedSiswa}-${selectedJuz}-${surah}`;
+                    const currentGrade = grades[key] || '';
+                    return (
+                      <tr key={surah} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-slate-500 font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3 font-bold text-slate-800">{surah}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleGrade(surah, 'Mumtaz')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border ${
+                                currentGrade === 'Mumtaz'
+                                  ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              Mumtaz
+                            </button>
+                            <button
+                              onClick={() => handleGrade(surah, 'JJ')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border ${
+                                currentGrade === 'JJ'
+                                  ? 'bg-blue-500 text-white border-blue-600 shadow-sm'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                              }`}
+                            >
+                              JJ
+                            </button>
+                            <button
+                              onClick={() => handleGrade(surah, 'Jayyid')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border ${
+                                currentGrade === 'Jayyid'
+                                  ? 'bg-red-500 text-white border-red-600 shadow-sm'
+                                  : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                              }`}
+                            >
+                              Jayyid
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

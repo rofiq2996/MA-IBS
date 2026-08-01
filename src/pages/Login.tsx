@@ -84,12 +84,12 @@ export function Login() {
              <div className="absolute bottom-[-20%] right-[-10%] w-80 h-80 rounded-full bg-white blur-3xl"></div>
           </div>
           
-          <div className="relative z-10 flex flex-col items-center text-center -mt-8 md:mt-0">
-            <div className="w-24 md:w-32 lg:w-40 mb-4">
-              <img src="https://lh3.googleusercontent.com/d/1zjkq3eRW8Q_BQSZhAbb6gMgcVwPHAQcc" alt="Logo MAS Al-Ihsan" className="w-full h-auto object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
+          <div className="relative z-10 flex flex-col items-center text-center mt-0">
+            <div className="w-20 md:w-28 lg:w-36 my-1 md:my-2">
+              <img src="https://iili.io/COPrcyG.png" alt="Logo MAS Al-Ihsan" className="w-full h-auto object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
             </div>
             
-            <h2 className="text-lg md:text-2xl font-bold mb-2 md:mb-8">Keutamaan Menuntut Ilmu</h2>
+            <h2 className="text-base md:text-2xl font-bold mb-1 md:mb-4">Keutamaan Menuntut Ilmu</h2>
             
             <div className="hidden md:block mb-2 md:mb-6">
               <p className="text-xl md:text-3xl text-[#F2C94C]" dir="rtl" style={{ fontFamily: '"KFGQPC Uthman Taha Naskh", "Amiri Quran", "Amiri", "Traditional Arabic", serif', lineHeight: '1.7' }}>

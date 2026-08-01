@@ -132,7 +132,7 @@ function RoleBasedDashboard() {
         {user?.role === 'kamad' && <DashboardKamad />}
         {user?.role === 'wakakurikulum' && <DashboardWakaKurikulum />}
         {user?.role === 'wakakesiswaan' && <DashboardWakaKesiswaan />}
-        {user?.role === 'guru_quran' && <DashboardGuruQuran />}
+        {user?.role === 'guru_quran' && <DashboardGuru />}
       </div>
 
       {/* Mobile-optimized Dashboard with 3x3 Grid Menu */}

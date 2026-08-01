@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { mockStudents, mockUsers, mockClasses } from '../data/mock';
 import { Edit2, Trash2, Plus, Search, X, Check, AlertCircle, Download, Upload, History, Users } from 'lucide-react';
@@ -14,6 +15,19 @@ import { AdminRombel } from './AdminRombel';
 
 export function AdminStudents() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [selectedClassFilter, setSelectedClassFilter] = useState('');
+  const walasClass = user?.className || user?.class_name;
+
+  const isWalas = user?.role === 'walas' || user?.roles?.includes('walas') || Boolean(user?.className || user?.class_name);
+  const isAdminOrKesiswaan = ["admin", "superadmin", "admin_utama", "kamad", "wakakurikulum", "wakakesiswaan", "kesiswaan"].includes(user?.role || "") || (user?.roles && user.roles.some((r: string) => ["admin", "superadmin", "kesiswaan", "wakakurikulum"].includes(r)));
+  const isPlainGuru = (user?.role === 'guru' || user?.roles?.includes('guru')) && !isWalas && !isAdminOrKesiswaan;
+
+  useEffect(() => {
+    if (isWalas && walasClass) {
+      setSelectedClassFilter(walasClass);
+    }
+  }, [isWalas, walasClass]);
   const canManage = ["admin", "kamad", "wakakurikulum", "wakakesiswaan"].includes(user?.role || "");
   const [activeTab, setActiveTab] = useState<"siswa" | "kelas" | "rombel" | "kenaikan">("siswa");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,6 +38,13 @@ export function AdminStudents() {
   const [users, setUsers] = useState<User[]>([]);
 
   const [classes, setClasses] = useState<{name:string}[]>([]);
+
+  const availableClassNames = Array.from(new Set([
+    ...classes.map(c => c.name),
+    ...students.map(s => s.className),
+    ...mockClasses.map((c: any) => c.name),
+    ...(walasClass ? [walasClass] : [])
+  ])).filter(Boolean).sort();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -105,14 +126,18 @@ export function AdminStudents() {
         behaviorScore: s.behavior_score ? Number(s.behavior_score) : 100
       }));
       setStudents(mappedStudents);
-      setClasses(classesData.map((c: any) => ({ name: c.name })));
+      if (Array.isArray(classesData) && classesData.length > 0) {
+        setClasses(classesData.map((c: any) => ({ name: c.name })));
+      } else {
+        setClasses(mockClasses.map((c: any) => ({ name: c.name })));
+      }
       const mappedUsers = usersData.map((u: any) => ({
         id: String(u.id),
         name: u.name,
         username: u.username,
         role: u.role,
         roles: [u.role],
-        gender: u.gender,
+        gender: u.gender, className: u.class_name, childId: u.child_id, roles: typeof u.roles === "string" ? JSON.parse(u.roles) : u.roles || [u.role],
       }));
       setUsers(mappedUsers);
     } catch (e) {
@@ -247,14 +272,18 @@ export function AdminStudents() {
     fetchData();
   };
 
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.className.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.className.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const activeClassFilter = (isWalas && !isAdminOrKesiswaan && walasClass) ? walasClass : selectedClassFilter;
+    const matchesClass = !activeClassFilter || s.className === activeClassFilter;
+    return matchesSearch && matchesClass;
+  });
 
   const getWaliKelas = (className: string) => {
-    const walas = users.find((u: any) => u.role === 'walas' && u.className === className);
+    const walas = users.find((u: any) => (u.role === 'walas' || (u.roles && u.roles.includes('walas'))) && u.className === className);
     return walas ? walas.name : 'Belum Ditugaskan';
   };
 
@@ -465,18 +494,71 @@ export function AdminStudents() {
 
       {activeTab === 'siswa' && (
         <>
+        {isPlainGuru ? (
+          <Card className="border-amber-200 bg-amber-50 shadow-sm">
+            <CardContent className="p-8 text-center space-y-3">
+              <div className="flex justify-center">
+                <AlertCircle className="w-12 h-12 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-800">Akses Data Siswa Terbatas</h3>
+              <p className="text-sm text-amber-700 max-w-md mx-auto">
+                Akses Data Siswa hanya diperuntukkan bagi Wali Kelas, Tim Kesiswaan, dan Administrator. Sebagai Guru Mata Pelajaran, Anda tidak dapat melihat data siswa secara menyeluruh, tetapi Anda dapat mengabsen siswa pada menu <strong>Absensi Siswa</strong>.
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => navigate('/absensi')}
+                  className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm"
+                >
+                  Buka Menu Absensi Siswa
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader className="pb-4 border-b border-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nama atau kelas..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama atau NIS..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+                <div className="w-full sm:w-44">
+                  <CustomSelect
+                    value={selectedClassFilter}
+                    onChange={setSelectedClassFilter}
+                    options={[
+                      { value: '', label: 'Semua Kelas' },
+                      ...availableClassNames.map(c => ({ value: c, label: c }))
+                    ]}
+                  />
+                </div>
+                {walasClass && (
+                  <button
+                    onClick={() => setSelectedClassFilter(selectedClassFilter === walasClass ? '' : walasClass)}
+                    className={"px-3 py-2 text-xs font-bold rounded-lg border transition-colors whitespace-nowrap " + (
+                      selectedClassFilter === walasClass
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    )}
+                  >
+                    Kelas Binaan ({walasClass})
+                  </button>
+                )}
+                {user?.role !== 'admin' && (
+                  <button
+                    onClick={() => navigate('/absensi')}
+                    className="px-3 py-2 text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white rounded-lg transition-colors whitespace-nowrap flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Absensi Kelas
+                  </button>
+                )}
               </div>
               {canManage && (
               <div className="flex flex-wrap items-center gap-2">
@@ -492,14 +574,14 @@ export function AdminStudents() {
                   className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                   title="Download Template Excel"
                 >
-                  <Download className="w-4 h-4" /> Unduh Template
+                  <Download className="w-4 h-4" /> Unduh
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                   title="Upload Data Excel"
                 >
-                  <Upload className="w-4 h-4" /> Import Excel
+                  <Upload className="w-4 h-4" /> Import
                 </button>
                 <button
                   onClick={openAddModal}
@@ -586,6 +668,7 @@ export function AdminStudents() {
           </div>
         </CardContent>
       </Card>
+        )}
 
       {/* MODAL DELETE CONFIRMATION */}
       {deleteConfirmId && (
@@ -675,7 +758,7 @@ export function AdminStudents() {
                       onChange={(val) => setStudentClassName(val)}
                       options={[
                         { value: '', label: '-- Belum ada kelas --' },
-                        ...classes.map(c => ({ value: c.name, label: c.name }))
+                        ...availableClassNames.map(c => ({ value: c, label: c }))
                       ]}
                       searchable={true}
                     />

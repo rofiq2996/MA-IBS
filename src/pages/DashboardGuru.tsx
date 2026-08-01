@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Users, Calendar, CheckSquare, Edit3, CalendarDays, 
   Book, Folder, LineChart as LineChartIcon, FileText, Sun, Moon, ClipboardList,
-  FileCheck, GraduationCap
+  FileCheck, GraduationCap, Heart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/apiClient';
@@ -55,6 +55,7 @@ export function DashboardGuru() {
     { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
     { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
     { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
+    ...(user?.role === 'guru_quran' ? [{ to: '/guru-quran/dhuha', icon: Heart, label: 'Absensi Dhuha' }] : []),
     { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
     { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
     { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },

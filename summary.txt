@@ -1,0 +1,4 @@
+Saya telah memperbaiki fitur Jurnal Ajar di menu Laporan:
+- **Tarik Data Dinamis**: Laporan "Jurnal Kegiatan Mengajar Guru" sekarang akan menarik data asli dari jurnal yang diisi guru di menu "Jurnal Mengajar" (menyimpan dan menampilkan dari memori). 
+- **Filter Berdasarkan Kelas dan Mapel**: Jurnal yang ditampilkan pada tabel Laporan juga secara otomatis menyesuaikan (terfilter) dengan Kelas dan Mata Pelajaran yang dipilih oleh guru pada menu Laporan.
+- **Tampilan Tabel & Export Data**: Tabel Laporan telah disesuaikan agar menampilkan kolom yang sesuai dengan format isian jurnal (Tanggal, Materi Pokok, Catatan KBM). Fungsi Export/Download ke Excel dan PDF untuk Jurnal Ajar juga akan menampilkan data riil tersebut.

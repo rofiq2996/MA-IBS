@@ -1,4 +1,8 @@
+const fs = require('fs');
+const filePath = 'src/pages/Perizinan.tsx';
+let content = fs.readFileSync(filePath, 'utf8');
 
+const perizinanContent = `
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -27,11 +31,11 @@ export function Perizinan() {
     apiClient('/query.php', {
       method: 'POST',
       body: JSON.stringify({
-        query: `
+        query: \`
           SELECT * FROM leave_requests 
-          WHERE user_id = ${user?.id}
+          WHERE user_id = \${user?.id}
           ORDER BY created_at DESC
-        `
+        \`
       })
     })
     .then(data => {
@@ -67,7 +71,7 @@ export function Perizinan() {
 
   const handleDelete = (id: string) => {
     if (window.confirm('Batalkan pengajuan ini?')) {
-      apiClient(`/crud.php?table=leave_requests&id=${id}`, { method: 'DELETE' })
+      apiClient(\`/crud.php?table=leave_requests&id=\${id}\`, { method: 'DELETE' })
         .then(() => {
            setRequests(requests.filter(r => String(r.id) !== String(id)));
         })
@@ -92,7 +96,7 @@ export function Perizinan() {
     };
 
     if (editingId) {
-      apiClient(`/crud.php?table=leave_requests&id=${editingId}`, {
+      apiClient(\`/crud.php?table=leave_requests&id=\${editingId}\`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       })
@@ -112,7 +116,7 @@ export function Perizinan() {
         // Simulate Push Notification to Kepala Sekolah
         const typeLabel = type.replace('_', ' ');
         sendLocalNotification('Pengajuan Izin Baru (SIM Madrasah)', {
-          body: `${user?.name || 'Guru'} mengajukan izin ${typeLabel} pada ${format(new Date(startDate), 'dd MMM', { locale: id })}.\nAlasan: ${reason}`,
+          body: \`\${user?.name || 'Guru'} mengajukan izin \${typeLabel} pada \${format(new Date(startDate), 'dd MMM', { locale: id })}.\\nAlasan: \${reason}\`,
           requireInteraction: true,
         });
       })
@@ -233,3 +237,7 @@ export function Perizinan() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync(filePath, perizinanContent, 'utf8');
+console.log("Updated Perizinan");

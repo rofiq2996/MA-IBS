@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { remoteStorage } from '../lib/remoteStorage';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/apiClient';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { mockStudents } from '../data/mock';
+import { mockStudents, mockClasses } from '../data/mock';
 import { MapPin, Edit2, Trash2, Download, FileText, Check, AlertCircle, Search, Plus, X, Clock, BookOpen, Users, ExternalLink, Link2, CheckCircle2, Eye, Calendar } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import * as XLSX from 'xlsx';
@@ -40,36 +41,68 @@ export function DataSiswa() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   
-  // Calculate allowed classes based on user role
+  const [students, setStudents] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      apiClient('/crud.php?table=students').then(data => {
+        if (Array.isArray(data)) {
+          setStudents(data);
+        }
+      }).catch(console.error);
+
+      apiClient('/crud.php?table=schedules').then(data => {
+        if (Array.isArray(data)) {
+          setSchedules(data);
+        }
+      }).catch(console.error);
+    }
+  }, []);
+
+  const walasClass = user?.className || user?.class_name;
+  const isWalas = user?.role === 'walas';
+  const isRestrictedRole = user?.role === 'guru' || user?.role === 'guru_quran' || user?.role === 'walas';
+
+  // Calculate allowed classes based on user role and schedules
   let allowedClasses: string[] = [];
-  if (user?.role === 'guru' || user?.role === 'guru_quran' || user?.role === 'walas') {
-    if (user.subjects) {
+  
+  if (isRestrictedRole) {
+    if (user?.subjects) {
       allowedClasses = [...allowedClasses, ...user.subjects.map(s => s.className)];
     }
-    if (user.role === 'walas' && user.className) {
-      allowedClasses.push(user.className);
+    if (isWalas && walasClass) {
+      allowedClasses.push(walasClass);
     }
+    const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+    const scheduledClasses = Array.from(new Set(teacherSchedules.map((s: any) => s.class_name))).filter(Boolean) as string[];
+    allowedClasses = [...allowedClasses, ...scheduledClasses];
     allowedClasses = Array.from(new Set(allowedClasses));
   }
   
-  // If user is one of those roles, only show their allowed classes. If admin/others, maybe show all.
-  const isRestrictedRole = user?.role === 'guru' || user?.role === 'guru_quran' || user?.role === 'walas';
-  
-  const availableClasses = isRestrictedRole 
-    ? Array.from(new Set(mockStudents.filter(s => allowedClasses.includes(s.className)).map(s => s.className))).sort()
-    : Array.from(new Set(mockStudents.map(s => s.className))).sort();
+  const studentsList = students.length > 0 ? students : mockStudents;
 
-  const filteredStudents = mockStudents.filter(s => {
-    // Check role restriction
-    if (isRestrictedRole && !allowedClasses.includes(s.className)) {
+  const availableClasses = (isRestrictedRole 
+    ? Array.from(new Set(studentsList.filter(s => allowedClasses.includes(s.className || s.class_name)).map(s => s.className || s.class_name))).sort()
+    : Array.from(new Set(studentsList.map(s => s.className || s.class_name))).sort()) as string[];
+
+  // If Walas, force selectedClass to user.className and hide filter
+  useEffect(() => {
+    if (isWalas && walasClass) {
+      setSelectedClass(walasClass);
+    }
+  }, [isWalas, walasClass]);
+
+  const filteredStudents = studentsList.filter(s => {
+    const sClass = s.className || s.class_name;
+    const sName = s.name || s.nama || '';
+    if (isRestrictedRole && !allowedClasses.includes(sClass)) {
       return false;
     }
-
-    const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        s.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        s.nis.includes(searchQuery);
-    const matchClass = selectedClass ? s.className === selectedClass : true;
-    
+    const matchSearch = sName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        sClass.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (s.nis || '').includes(searchQuery);
+    const matchClass = selectedClass ? sClass === selectedClass : true;
     return matchSearch && matchClass;
   });
 
@@ -80,19 +113,22 @@ export function DataSiswa() {
       <Card>
         <CardHeader className="pb-4 border-b border-slate-100">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle>Daftar Siswa</CardTitle>
+            <CardTitle>Daftar Siswa {isWalas && walasClass ? `Kelas ${walasClass}` : ''}</CardTitle>
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-              <div className="w-full sm:w-48">
-                <CustomSelect
-                  value={selectedClass}
-                  onChange={setSelectedClass}
-                  options={[
-                    { value: '', label: 'Semua Kelas' },
-                    ...availableClasses.map(c => ({ value: c, label: c }))
-                  ]}
-                  placeholder="Pilih Kelas"
-                />
-              </div>
+              {!isWalas && (
+                <div className="w-full sm:w-48">
+                  <CustomSelect
+                    value={selectedClass}
+                    onChange={setSelectedClass}
+                    disabled={false}
+                    options={[
+                      { value: '', label: 'Semua Kelas' },
+                      ...availableClasses.map(c => ({ value: c, label: c }))
+                    ]}
+                    placeholder="Pilih Kelas"
+                  />
+                </div>
+              )}
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
@@ -121,17 +157,17 @@ export function DataSiswa() {
                   filteredStudents.map(s => (
                     <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
                       <td className="py-3 px-4">
-                        <p className="font-bold text-slate-800 text-sm">{s.name}</p>
+                        <p className="font-bold text-slate-800 text-sm">{s.name || s.nama}</p>
                         <p className="text-xs text-slate-500">{s.nis}</p>
                       </td>
                       <td className="py-3 px-4">
                         <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-wider">
-                          {s.className}
+                          {s.className || s.class_name}
                         </span>
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-bold text-slate-600 text-sm">
-                          {s.gender || '-'}
+                          {s.gender || s.jenis_kelamin || '-'}
                         </span>
                       </td>
                     </tr>
@@ -154,6 +190,7 @@ export function DataSiswa() {
 
 export function JadwalMengajar() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canEdit = user?.role === 'admin' || user?.role === 'wakakurikulum';
   const [filterHari, setFilterHari] = useState('Semua Hari');
   const [loading, setLoading] = useState(true);
@@ -170,7 +207,7 @@ export function JadwalMengajar() {
           // Filter out schedules just for this teacher if not admin/wakakurikulum
           // Wait, if it's admin, they might want to see all. But the page is for 'Guru'.
           // Let's filter by user.id if not admin.
-          const teacherSchedules = canEdit ? data : data.filter((d: any) => d.teacher_id === user?.id);
+          const teacherSchedules = canEdit ? data : data.filter((d: any) => String(d.teacher_id) === String(user?.id));
           
           const mapped = teacherSchedules.map((d: any) => ({
             id: d.id,
@@ -210,7 +247,9 @@ export function JadwalMengajar() {
               </div>
             </div>
             {canEdit && (
-              <button className="px-4 py-2 bg-[#0d7345] hover:bg-[#0a5c37] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+              <button 
+                onClick={() => user?.role === 'admin' ? navigate('/admin/jadwal') : navigate('/kurikulum/jadwal')}
+                className="px-4 py-2 bg-[#0d7345] hover:bg-[#0a5c37] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
                 <Plus className="w-4 h-4" /> Tambah Jadwal
               </button>
             )}
@@ -241,10 +280,14 @@ export function JadwalMengajar() {
                       {canEdit && (
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded" title="Edit">
+                            <button 
+                              onClick={() => user?.role === 'admin' ? navigate('/admin/jadwal') : navigate('/kurikulum/jadwal')}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded" title="Edit">
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus">
+                            <button 
+                              onClick={() => user?.role === 'admin' ? navigate('/admin/jadwal') : navigate('/kurikulum/jadwal')}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Hapus">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -292,10 +335,14 @@ export function JadwalMengajar() {
 
                   {canEdit && (
                     <div className="flex justify-end gap-2 pt-2.5 border-t border-slate-100 mt-1">
-                      <button className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-100" title="Edit">
+                      <button 
+                        onClick={() => user?.role === 'admin' ? navigate('/admin/jadwal') : navigate('/kurikulum/jadwal')}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-100" title="Edit">
                         <Edit2 className="w-3.5 h-3.5" /> Edit
                       </button>
-                      <button className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100" title="Hapus">
+                      <button 
+                        onClick={() => user?.role === 'admin' ? navigate('/admin/jadwal') : navigate('/kurikulum/jadwal')}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100" title="Hapus">
                         <Trash2 className="w-3.5 h-3.5" /> Hapus
                       </button>
                     </div>
@@ -317,24 +364,96 @@ export function JadwalMengajar() {
 export function Absensi() {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+  const [dbClasses, setDbClasses] = useState<string[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [schedulesLoaded, setSchedulesLoaded] = useState(false);
+
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiClient('/crud.php?table=classes').then(data => {
+      if (Array.isArray(data)) {
+        setDbClasses(data.map((c: any) => c.name));
+      }
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=students').then(data => {
+      if (Array.isArray(data)) {
+        setStudentsList(data);
+      }
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=schedules').then(data => {
+      if (Array.isArray(data)) {
+        setSchedules(data);
+      }
+      setSchedulesLoaded(true);
+    }).catch(err => {
+      console.error(err);
+      setSchedulesLoaded(true);
+    });
+
+    apiClient('/crud.php?table=teaching_assignments').then(data => {
+      if (Array.isArray(data)) {
+        setTeachingAssignments(data);
+      }
+    }).catch(console.error);
+  }, []);
+
+  const isWalasRole = user?.role === 'walas';
+  const isWalas = user?.role === 'walas' || user?.roles?.includes('walas');
+  const walasClass = user?.className || user?.class_name;
   
-  const isWalas = user?.role === 'walas';
-  const subjects = user?.subjects || [];
-  const availableClasses = Array.from(new Set(subjects.map(s => s.className)));
+  // Ambil data plotting sesuai dengan ID guru
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const assignedClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+  
+  let availableClasses = Array.from(new Set([...assignedClasses])).filter(Boolean).sort() as string[];
+  
+  if (isWalasRole && walasClass) {
+    availableClasses = [walasClass];
+  } else if (isWalas && walasClass) {
+    availableClasses = Array.from(new Set([walasClass, ...availableClasses]));
+  }
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedMapel, setSelectedMapel] = useState('');
 
-  const classSubjects = subjects.filter(s => s.className === selectedClass);
-  const availableMapel = Array.from(new Set(classSubjects.map(s => s.subjectName)));
+  useEffect(() => {
+    if (!selectedClass && availableClasses.length > 0) {
+      if (isWalasRole && walasClass) {
+        setSelectedClass(walasClass);
+      } else {
+        setSelectedClass(availableClasses[0]);
+      }
+    }
+  }, [availableClasses, walasClass, isWalasRole, selectedClass]);
+
+  const classAssignments = teacherAssignments.filter((a: any) => a.class_name === selectedClass);
+  const classSubjectsList = Array.from(new Set(classAssignments.map((a: any) => a.subject_name))).filter(Boolean) as string[];
+
+  let availableMapel = classSubjectsList;
+  
+  if (isWalasRole) {
+    availableMapel = ['Presensi Wali Kelas'];
+  } else if (isWalas && selectedClass === walasClass) {
+    availableMapel = ['Presensi Wali Kelas', ...classSubjectsList];
+  }
+
+  if (availableMapel.length === 0 && selectedClass === walasClass) {
+    availableMapel = ['Presensi Wali Kelas'];
+  }
 
   useEffect(() => {
-    if (availableMapel.length === 1) {
-      setSelectedMapel(availableMapel[0]);
-    } else if (!availableMapel.includes(selectedMapel)) {
-      setSelectedMapel('');
+    if (availableMapel.length > 0 && !availableMapel.includes(selectedMapel)) {
+      if (isWalasRole || (isWalas && selectedClass === walasClass)) {
+        setSelectedMapel('Presensi Wali Kelas');
+      } else {
+        setSelectedMapel(availableMapel[0] || '');
+      }
     }
-  }, [selectedClass, availableMapel, selectedMapel]);
+  }, [selectedClass, availableMapel, selectedMapel, isWalas, isWalasRole, walasClass]);
 
   const limitAbsenSiswa = remoteStorage.getItem('limit_absen_siswa') || '15:00';
   const [limitHour, limitMinute] = limitAbsenSiswa.split(':').map(Number);
@@ -377,6 +496,10 @@ export function Absensi() {
     setAttendance(prev => ({ ...prev, [id]: { ...prev[id], ket } }));
   };
 
+  const hasScheduleForClass = !selectedClass || schedules.length === 0 || schedules.some((s: any) => s.class_name === selectedClass || s.rombel === selectedClass);
+  const hasScheduleForSubject = selectedMapel === 'Presensi Wali Kelas' || schedules.length === 0 || schedules.some((s: any) => (s.class_name === selectedClass || s.rombel === selectedClass) && (s.subject_name === selectedMapel || s.mapel === selectedMapel));
+  const isScheduleCreated = schedules.length > 0;
+
   const handleSave = () => {
     if (!selectedClass) {
       window.alert("Pilih kelas terlebih dahulu!");
@@ -386,13 +509,53 @@ export function Absensi() {
       window.alert("Pilih mata pelajaran terlebih dahulu!");
       return;
     }
+    if (!isScheduleCreated) {
+      window.alert("Jadwal belum dibuat oleh Wakakurikulum dan Admin! Pengisian absensi belum dapat diproses.");
+      return;
+    }
+    if (selectedMapel !== 'Presensi Wali Kelas' && !hasScheduleForSubject) {
+      window.alert(`Jadwal pelajaran ${selectedMapel} untuk ${selectedClass} belum dibuat oleh Wakakurikulum dan Admin!`);
+      return;
+    }
+    
+    // Save to remote storage to persist locally
+    const storageKey = `attendance_${selectedClass}_${selectedMapel}`;
+    const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+    const today = new Date().toISOString().split('T')[0];
+    existingData[today] = attendance;
+    remoteStorage.setItem(storageKey, JSON.stringify(existingData));
+    
     window.alert("Absensi berhasil disimpan!");
   };
 
   const showStudents = selectedClass !== '' && (availableMapel.length === 0 || selectedMapel !== '');
+  const isScheduleValid = isScheduleCreated && (selectedMapel === 'Presensi Wali Kelas' || hasScheduleForSubject);
 
   return (
     <div className="space-y-4">
+      {/* Schedule Warning Banner if not created by Wakakurikulum/Admin */}
+      {schedulesLoaded && !isScheduleCreated && (
+        <Card className="border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3 text-amber-800">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <p className="text-xs sm:text-sm font-medium">
+              <strong>Jadwal Pelajaran Belum Dibuat:</strong> Pengisian absensi baru dapat dilakukan setelah jadwal pelajaran dibuat oleh Wakakurikulum atau Administrator.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {schedulesLoaded && isScheduleCreated && selectedClass && selectedMapel && selectedMapel !== 'Presensi Wali Kelas' && !hasScheduleForSubject && (
+        <Card className="border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-3 text-amber-800">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <p className="text-xs sm:text-sm font-medium">
+              Jadwal pelajaran untuk mata pelajaran <strong>{selectedMapel}</strong> di kelas <strong>{selectedClass}</strong> belum dibuat oleh Wakakurikulum / Admin.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Top Bar */}
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -401,32 +564,33 @@ export function Absensi() {
             <p className="text-sm text-slate-500 mt-0.5">Masukkan data kehadiran siswa</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
-            {/* Kelas & Mapel Side-by-Side on HP */}
-            <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-3">
-              <div className="w-full md:w-[150px]">
-                <CustomSelect
-                  value={selectedClass}
-                  onChange={setSelectedClass}
-                  options={[
-                    { value: '', label: 'Pilih Kelas' },
-                    ...availableClasses.map(c => ({ value: String(c), label: String(c) }))
-                  ]}
-                />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
+              {/* Kelas & Mapel Side-by-Side on HP */}
+              <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-3">
+                <div className="w-full md:w-[150px]">
+                  <CustomSelect
+                    value={selectedClass}
+                    onChange={setSelectedClass}
+                    disabled={false}
+                    options={[
+                      { value: '', label: 'Pilih Kelas' },
+                      ...availableClasses.map(c => ({ value: String(c), label: String(c) }))
+                    ]}
+                  />
+                </div>
+                
+                <div className="w-full md:w-[150px]">
+                  <CustomSelect
+                    value={selectedMapel}
+                    onChange={setSelectedMapel}
+                    disabled={availableMapel.length <= 1}
+                    options={[
+                      { value: '', label: 'Pilih Mapel' },
+                      ...availableMapel.map(m => ({ value: String(m), label: String(m) }))
+                    ]}
+                  />
+                </div>
               </div>
-              
-              <div className="w-full md:w-[150px]">
-                <CustomSelect
-                  value={selectedMapel}
-                  onChange={setSelectedMapel}
-                  disabled={availableMapel.length <= 1}
-                  options={[
-                    { value: '', label: 'Pilih Mapel' },
-                    ...availableMapel.map(m => ({ value: String(m), label: String(m) }))
-                  ]}
-                />
-              </div>
-            </div>
 
             {/* Simpan Button below them on HP */}
             <button 
@@ -454,7 +618,11 @@ export function Absensi() {
             </thead>
             <tbody>
               {showStudents ? (
-                mockStudents.map((s, i) => {
+                (() => {
+                  const filteredDb = studentsList.filter((s: any) => s.class_name === selectedClass || s.className === selectedClass);
+                  const filteredMock = mockStudents.filter((s: any) => s.className === selectedClass || s.class_name === selectedClass);
+                  const studentData = filteredDb.length > 0 ? filteredDb : (filteredMock.length > 0 ? filteredMock : mockStudents);
+                  return studentData.map((s: any, i: number) => {
                   const stat = attendance[s.id]?.status || '';
                   const ket = attendance[s.id]?.ket || '';
                   return (
@@ -501,6 +669,7 @@ export function Absensi() {
                     </tr>
                   )
                 })
+                })()
               ) : (
                 <tr>
                   <td colSpan={4} className="py-12 text-center text-sm font-medium text-slate-500">
@@ -518,46 +687,98 @@ export function Absensi() {
 
 export function InputNilai() {
   const { user } = useAuth();
-  
   const subjects = user?.subjects || [];
-  const availableClasses = Array.from(new Set(subjects.map(s => s.className)));
   
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedMapel, setSelectedMapel] = useState('');
-  const [uhCount, setUhCount] = useState(1);
-  
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+
   // Read active semester from remoteStorage (set by admin)
   const [semester, setSemester] = useState('Ganjil');
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      
       apiClient('/crud.php?table=academic_terms')
         .then(data => {
-          const selectedTermId = remoteStorage.getItem('selectedAcademicTermId');
-          let activeTerm = null;
-          if (selectedTermId) {
-            activeTerm = data.find((t: any) => String(t.id) === selectedTermId);
+          if (Array.isArray(data)) {
+            const selectedTermId = remoteStorage.getItem('selectedAcademicTermId');
+            let activeTerm = null;
+            if (selectedTermId) {
+              activeTerm = data.find((t: any) => String(t.id) === selectedTermId);
+            }
+            if (!activeTerm) {
+              activeTerm = data.find((t: any) => Boolean(t.is_active));
+            }
+            if (activeTerm) setSemester(activeTerm.semester);
           }
-          if (!activeTerm) {
-            activeTerm = data.find((t: any) => Boolean(t.is_active));
-          }
-          if (activeTerm) setSemester(activeTerm.semester);
         })
         .catch(console.error);
+        
+      apiClient('/crud.php?table=schedules').then(data => {
+        if (Array.isArray(data)) {
+          setSchedules(data);
+        }
+      }).catch(console.error);
+
+      apiClient('/crud.php?table=students').then(data => {
+        if (Array.isArray(data)) {
+          setStudentsList(data);
+        }
+      }).catch(console.error);
+
+      apiClient('/crud.php?table=teaching_assignments').then(data => {
+        if (Array.isArray(data)) {
+          setTeachingAssignments(data);
+        }
+      }).catch(console.error);
     }
   }, []);
 
-  const classSubjects = subjects.filter(s => s.className === selectedClass);
-  const availableMapel = Array.from(new Set(classSubjects.map(s => s.subjectName)));
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const assignedClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+  
+  let availableClasses = Array.from(new Set([...assignedClasses])).sort() as string[];
 
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedMapel, setSelectedMapel] = useState('');
+
+  const [uhCount, setUhCount] = useState(1);
+  const [grades, setGrades] = useState<Record<string, any>>({});
+
+  // Update selected class when available classes load
   useEffect(() => {
-    if (availableMapel.length === 1) {
-      setSelectedMapel(availableMapel[0]);
-    } else if (!availableMapel.includes(selectedMapel)) {
-      setSelectedMapel('');
+    if (!selectedClass && availableClasses.length > 0) {
+      setSelectedClass(availableClasses[0]);
+    }
+  }, [availableClasses, selectedClass]);
+
+  const classAssignments = teacherAssignments.filter((a: any) => a.class_name === selectedClass);
+  let availableMapel = Array.from(new Set(classAssignments.map((a: any) => a.subject_name))).filter(Boolean) as string[];
+  
+  useEffect(() => {
+    if (availableMapel.length > 0 && !availableMapel.includes(selectedMapel)) {
+      setSelectedMapel(availableMapel[0] || '');
     }
   }, [selectedClass, availableMapel, selectedMapel]);
+  
+  useEffect(() => {
+    if (selectedClass && selectedMapel) {
+      const storageKey = `grades_${selectedClass}_${selectedMapel}`;
+      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      setGrades(savedData);
+    }
+  }, [selectedClass, selectedMapel]);
+  
+  const handleGradeChange = (studentId: string, field: string, value: string) => {
+    setGrades(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [field]: value
+      }
+    }));
+  };
 
   const handleSave = () => {
     if (!selectedClass) {
@@ -568,10 +789,16 @@ export function InputNilai() {
       window.alert("Pilih mata pelajaran terlebih dahulu!");
       return;
     }
+    const storageKey = `grades_${selectedClass}_${selectedMapel}`;
+    remoteStorage.setItem(storageKey, JSON.stringify(grades));
     window.alert("Nilai berhasil disimpan!");
   };
 
   const showStudents = selectedClass !== '' && (availableMapel.length === 0 || selectedMapel !== '');
+  
+  const classStudents = studentsList.filter(s => s.class_name === selectedClass || s.className === selectedClass);
+  const mockClassStudents = mockStudents.filter(s => s.className === selectedClass);
+  const targetStudents = classStudents.length > 0 ? classStudents : (mockClassStudents.length > 0 ? mockClassStudents : mockStudents);
 
   return (
     <div className="space-y-4">
@@ -592,6 +819,7 @@ export function InputNilai() {
                 <CustomSelect
                   value={selectedClass}
                   onChange={setSelectedClass}
+                    disabled={false}
                   options={[
                     { value: '', label: 'Pilih Kelas' },
                     ...availableClasses.map(c => ({ value: String(c), label: String(c) }))
@@ -664,20 +892,38 @@ export function InputNilai() {
             </thead>
             <tbody>
               {showStudents ? (
-                mockStudents.map((s, index) => (
+                targetStudents.map((s, index) => (
                   <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-white">
                     <td className="py-3 px-4 text-sm font-medium text-slate-500 text-center">{index + 1}</td>
                     <td className="py-3 px-4 text-sm font-bold text-slate-800 whitespace-nowrap">{s.name}</td>
                     {Array.from({ length: uhCount }).map((_, idx) => (
                       <td key={`uh-input-${idx}`} className="py-3 px-4">
-                        <input type="number" placeholder="0" className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                        <input 
+                          type="number" 
+                          placeholder="0" 
+                          value={grades[s.id]?.[`uh${idx + 1}`] || ''}
+                          onChange={(e) => handleGradeChange(s.id, `uh${idx + 1}`, e.target.value)}
+                          className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                        />
                       </td>
                     ))}
                     <td className="py-3 px-4">
-                      <input type="number" placeholder="0" className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                      <input 
+                        type="number" 
+                        placeholder="0" 
+                        value={grades[s.id]?.uts || ''}
+                        onChange={(e) => handleGradeChange(s.id, 'uts', e.target.value)}
+                        className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                      />
                     </td>
                     <td className="py-3 px-4">
-                      <input type="number" placeholder="0" className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" />
+                      <input 
+                        type="number" 
+                        placeholder="0" 
+                        value={grades[s.id]?.uas || ''}
+                        onChange={(e) => handleGradeChange(s.id, 'uas', e.target.value)}
+                        className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                      />
                     </td>
                   </tr>
                 ))
@@ -699,30 +945,62 @@ export function InputNilai() {
 export function JurnalMengajar() {
   const { user } = useAuth();
   const subjects = user?.subjects || [];
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      apiClient('/crud.php?table=schedules').then(data => {
+        if (Array.isArray(data)) {
+          setSchedules(data);
+        }
+      }).catch(console.error);
+
+      apiClient('/crud.php?table=teaching_assignments').then(data => {
+        if (Array.isArray(data)) {
+          setTeachingAssignments(data);
+        }
+      }).catch(console.error);
+    }
+  }, []);
+
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
   
-  const options = subjects.map(s => ({
-    value: `${s.subjectName} - ${s.className}`,
-    label: `${s.subjectName} - ${s.className}`
+  // Combine schedules and subjects
+  const allPairs = Array.from(new Set(teacherAssignments.map(s => `${s.subject_name} - ${s.class_name}`))).filter(Boolean).sort();
+  
+  const options = allPairs.map(p => ({
+    value: p,
+    label: p
   }));
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selected, setSelected] = useState(options[0]?.value || '');
+
+  // Update selected when options load
+  useEffect(() => {
+    if (!selected && options.length > 0) {
+      setSelected(options[0].value);
+    }
+  }, [options, selected]);
+
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [materi, setMateri] = useState('');
   const [catatan, setCatatan] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const [jurnals, setJurnals] = useState([
-    {
-      id: '1',
-      tanggal: '18-07-2026',
-      kelas: 'X-IPA 1',
-      mataPelajaran: 'Matematika Peminatan',
-      materi: 'Logaritma',
-      catatan: 'Semua siswa hadir dan aktif'
-    }
-  ]);
+  const [jurnals, setJurnals] = useState<any[]>([]);
+
+  useEffect(() => {
+    const savedJurnals = JSON.parse(remoteStorage.getItem('jurnals') || '[]');
+    setJurnals(savedJurnals);
+  }, []);
+
+  const saveToStorage = (newData: any[]) => {
+    setJurnals(newData);
+    remoteStorage.setItem('jurnals', JSON.stringify(newData));
+  };
 
   const [toastMessage, setToastMessage] = useState('');
 
@@ -738,14 +1016,15 @@ export function JurnalMengajar() {
     const formattedTanggal = `${day}-${month}-${year}`;
     
     if (editingId) {
-      setJurnals(jurnals.map(j => j.id === editingId ? {
+      const updated = jurnals.map(j => j.id === editingId ? {
         ...j,
         tanggal: formattedTanggal,
         kelas: kelas || '',
         mataPelajaran: mapel || '',
         materi,
         catatan
-      } : j));
+      } : j);
+      saveToStorage(updated);
       setToastMessage("Jurnal mengajar berhasil diperbarui!");
     } else {
       const newJurnal = {
@@ -757,7 +1036,7 @@ export function JurnalMengajar() {
         catatan
       };
       
-      setJurnals([newJurnal, ...jurnals]);
+      saveToStorage([newJurnal, ...jurnals]);
       setToastMessage("Jurnal mengajar berhasil disimpan!");
     }
     
@@ -787,7 +1066,8 @@ export function JurnalMengajar() {
 
   const confirmDelete = () => {
     if (deleteConfirm) {
-      setJurnals(jurnals.filter(j => j.id !== deleteConfirm));
+      const updated = jurnals.filter(j => j.id !== deleteConfirm);
+      saveToStorage(updated);
       setDeleteConfirm(null);
       setToastMessage("Jurnal berhasil dihapus!");
       setTimeout(() => setToastMessage(''), 3000);
@@ -1515,26 +1795,75 @@ export function Laporan() {
   const { user } = useAuth();
   const subjects = user?.subjects || [];
   
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  
+  useEffect(() => {
+    apiClient('/crud.php?table=students').then(data => {
+      if (Array.isArray(data)) {
+        setStudentsList(data);
+      }
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=schedules').then(data => {
+      if (Array.isArray(data)) {
+        setSchedules(data);
+      }
+    }).catch(console.error);
+  }, []);
+
+  const isWalas = user?.role === 'walas' || user?.roles?.includes('walas');
+  const walasClass = user?.className || user?.class_name;
+  
+  const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+  const scheduledClasses = Array.from(new Set(teacherSchedules.map((s: any) => s.class_name))).filter(Boolean) as string[];
+  const subjectClasses = Array.from(new Set(subjects.map((s: any) => s.className))).filter(Boolean) as string[];
+
   // State for form selection
   const [reportType, setReportType] = useState<'presensi' | 'nilai' | 'jurnal' | 'analisis'>('presensi');
   
-  // Available classes based on teacher's subjects
-  const availableClasses = Array.from(new Set(subjects.map(s => s.className)));
-  const defaultClass = availableClasses[0] || 'X-IPA 1';
-  const [selectedClass, setSelectedClass] = useState(defaultClass);
+  // Available classes based on teacher's schedules and subjects
+  const availableClasses = Array.from(new Set([
+    ...(walasClass ? [walasClass] : []),
+    ...scheduledClasses,
+    ...subjectClasses
+  ])).filter(Boolean).sort() as string[];
+
+  const [selectedClass, setSelectedClass] = useState('');
+
+  // Update selected class when available classes load
+  useEffect(() => {
+    if (!selectedClass && availableClasses.length > 0) {
+      if (isWalas && walasClass) {
+        setSelectedClass(walasClass);
+      } else {
+        setSelectedClass(availableClasses[0]);
+      }
+    }
+  }, [availableClasses, selectedClass, isWalas, walasClass]);
 
   // Filter available subjects based on selected class
-  const classSubjects = subjects.filter(s => s.className === selectedClass);
-  const defaultSubject = classSubjects[0]?.subjectName || 'Matematika Peminatan';
-  const [selectedSubject, setSelectedSubject] = useState(defaultSubject);
+  const classSchedules = teacherSchedules.filter(s => s.class_name === selectedClass);
+  const classSubjectsList = classSchedules.length > 0
+    ? Array.from(new Set(classSchedules.map(s => s.subject_name))).filter(Boolean) as string[]
+    : Array.from(new Set(subjects.filter((s: any) => s.className === selectedClass).map((s: any) => s.subjectName))).filter(Boolean) as string[];
+
+  let availableMapel = isWalas && selectedClass === walasClass 
+    ? ['Presensi Wali Kelas', ...classSubjectsList] 
+    : classSubjectsList;
+
+  const [selectedSubject, setSelectedSubject] = useState('');
 
   // When class changes, update the subject to the first one available for that class
-  React.useEffect(() => {
-    const classSubs = subjects.filter(s => s.className === selectedClass);
-    if (classSubs.length > 0) {
-      setSelectedSubject(classSubs[0].subjectName);
+  useEffect(() => {
+    if (availableMapel.length > 0 && !availableMapel.includes(selectedSubject)) {
+      if (isWalas && selectedClass === walasClass) {
+        setSelectedSubject('Presensi Wali Kelas');
+      } else {
+        setSelectedSubject(availableMapel[0]);
+      }
     }
-  }, [selectedClass]);
+  }, [selectedClass, availableMapel, selectedSubject, isWalas, walasClass]);
 
   const [selectedMonth, setSelectedMonth] = useState('Juli');
   const [selectedSemester, setSelectedSemester] = useState('Ganjil 2026/2027');
@@ -1555,46 +1884,103 @@ export function Laporan() {
 
   // Live preview data generator
   const getPreviewData = () => {
-    const classStudents = mockStudents.filter(s => s.className === selectedClass);
-    const targetStudents = classStudents.length > 0 ? classStudents : mockStudents;
+    const classStudents = studentsList.filter(s => s.class_name === selectedClass || s.className === selectedClass);
+    const mockClassStudents = mockStudents.filter(s => s.className === selectedClass);
+    const targetStudents = classStudents.length > 0 ? classStudents : (mockClassStudents.length > 0 ? mockClassStudents : mockStudents);
 
     if (reportType === 'presensi') {
-      return targetStudents.map((s, idx) => ({
-        no: idx + 1,
-        nama: s.name,
-        nis: s.nis,
-        hadir: s.attendance?.present || 0,
-        sakit: s.attendance?.sick || 0,
-        izin: s.attendance?.permission || 0,
-        alpa: s.attendance?.absent || 0,
-        persentase: `${Math.round(((s.attendance?.present || 0) / ((s.attendance?.present || 0) + (s.attendance?.sick || 0) + (s.attendance?.permission || 0) + (s.attendance?.absent || 0) || 1)) * 100)}%`
-      }));
-    } else if (reportType === 'nilai') {
-      // Use deterministic pseudo-random grades based on student ID so it doesn't flicker on every re-render
+      const storageKey = `attendance_${selectedClass}_${selectedSubject}`;
+      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      
       return targetStudents.map((s, idx) => {
-        const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
-        const tugas = (charCodeSum % 20) + 75; // 75-95
-        const uts = ((charCodeSum * 2) % 25) + 70; // 70-95
-        const uas = ((charCodeSum * 3) % 25) + 70; // 70-95
-        const akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
-        const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
+        let present = s.attendance?.present || 0;
+        let sick = s.attendance?.sick || 0;
+        let permission = s.attendance?.permission || 0;
+        let absent = s.attendance?.absent || 0;
+
+        // Aggregate local storage data for this student
+        Object.values(savedData).forEach((dailyData: any) => {
+          const status = dailyData[s.id]?.status;
+          if (status === 'Hadir') present++;
+          else if (status === 'Sakit') sick++;
+          else if (status === 'Izin') permission++;
+          else if (status === 'Alpa') absent++;
+        });
+        
+        const total = present + sick + permission + absent || 1;
+        
         return {
           no: idx + 1,
           nama: s.name,
           nis: s.nis,
-          tugas,
-          uts,
-          uas,
-          akhir,
-          predikat,
-          ket: akhir >= 75 ? "Lulus" : "Remedial"
+          hadir: present,
+          sakit: sick,
+          izin: permission,
+          alpa: absent,
+          persentase: `${Math.round((present / total) * 100)}%`
+        };
+      });
+    } else if (reportType === 'nilai') {
+      const storageKey = `grades_${selectedClass}_${selectedSubject}`;
+      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+
+      return targetStudents.map((s, idx) => {
+        let uhSum = 0;
+        let uhCount = 0;
+        for (let i = 1; i <= 5; i++) {
+          const val = savedData[s.id]?.[`uh${i}`];
+          if (val) {
+            uhSum += Number(val);
+            uhCount++;
+          }
+        }
+        
+        // Calculate average UH if available, otherwise 0 or pseudo random if we wanted to fallback but we want real data now.
+        // Let's use 0 if no data
+        const tugas = uhCount > 0 ? Math.round(uhSum / uhCount) : 0;
+        const uts = Number(savedData[s.id]?.uts || 0);
+        const uas = Number(savedData[s.id]?.uas || 0);
+        
+        let akhir = 0;
+        if (tugas || uts || uas) {
+           akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
+        }
+        
+        const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
+        
+        return {
+          no: idx + 1,
+          nama: s.name,
+          nis: s.nis,
+          tugas: tugas || '-',
+          uts: uts || '-',
+          uas: uas || '-',
+          akhir: akhir || '-',
+          predikat: akhir ? predikat : '-',
+          ket: akhir >= 75 ? "Lulus" : (akhir > 0 ? "Remedial" : "-")
         };
       });
     } else if (reportType === 'jurnal') {
-  return [];
+      const savedJurnals = JSON.parse(remoteStorage.getItem('jurnals') || '[]');
+      let filteredJurnals = savedJurnals;
+      if (selectedClass) {
+        filteredJurnals = filteredJurnals.filter((j: any) => j.kelas === selectedClass);
+      }
+      if (selectedSubject && selectedSubject !== 'Semua Mata Pelajaran' && selectedSubject !== 'Presensi Wali Kelas') {
+        filteredJurnals = filteredJurnals.filter((j: any) => j.mataPelajaran === selectedSubject);
+      }
+      
+      return filteredJurnals.map((j: any, idx: number) => ({
+        no: idx + 1,
+        tanggal: j.tanggal,
+        kelas: j.kelas,
+        mataPelajaran: j.mataPelajaran,
+        materi: j.materi,
+        catatan: j.catatan
+      }));
     } else {
       return targetStudents.map((s, idx) => {
-        const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
+        const charCodeSum = (s.name || '').split('').reduce((acc: number, curr: string) => acc + curr.charCodeAt(0), 0);
         const awal = (charCodeSum % 10) + 65; // 65-75
         const akhir = ((charCodeSum * 3) % 15) + 80; // 80-95
         const peningkat = akhir - awal;
@@ -1614,8 +2000,9 @@ export function Laporan() {
   const previewRows = getPreviewData();
 
   const handleDownload = (format: 'excel' | 'pdf') => {
-    const classStudents = mockStudents.filter(s => s.className === selectedClass);
-    const targetStudents = classStudents.length > 0 ? classStudents : mockStudents;
+    const classStudents = studentsList.filter(s => s.class_name === selectedClass || s.className === selectedClass);
+    const mockClassStudents = mockStudents.filter(s => s.className === selectedClass);
+    const targetStudents = classStudents.length > 0 ? classStudents : (mockClassStudents.length > 0 ? mockClassStudents : mockStudents);
 
     let dataToExport: any[] = [];
     let sheetName = "";
@@ -1659,35 +2046,22 @@ export function Laporan() {
       });
     } else if (reportType === 'jurnal') {
       sheetName = "Jurnal Mengajar";
-      dataToExport = [
-        {
-          "No": 1,
-          "Tanggal": "06-07-2026",
-          "Kelas": selectedClass,
-          "Mata Pelajaran": selectedSubject,
-          "Materi Pokok": "Pengenalan Logaritma & Sifat-Sifatnya",
-          "Kehadiran Siswa": `${targetStudents.length} / ${targetStudents.length}`,
-          "Catatan KBM": "Siswa aktif dan memahami materi dasar logaritma dengan baik."
-        },
-        {
-          "No": 2,
-          "Tanggal": "08-07-2026",
-          "Kelas": selectedClass,
-          "Mata Pelajaran": selectedSubject,
-          "Materi Pokok": "Penerapan Fungsi Logaritma",
-          "Kehadiran Siswa": `${targetStudents.length - 1} / ${targetStudents.length}`,
-          "Catatan KBM": "Satu siswa izin sakit. KBM berjalan lancar dengan latihan soal berkelompok."
-        },
-        {
-          "No": 3,
-          "Tanggal": "10-07-2026",
-          "Kelas": selectedClass,
-          "Mata Pelajaran": selectedSubject,
-          "Materi Pokok": "Ulangan Harian Logaritma",
-          "Kehadiran Siswa": `${targetStudents.length} / ${targetStudents.length}`,
-          "Catatan KBM": "Ulangan harian menggunakan LMS CBT Madrasah Digital."
-        }
-      ];
+      const savedJurnals = JSON.parse(remoteStorage.getItem('jurnals') || '[]');
+      let filteredJurnals = savedJurnals;
+      if (selectedClass) {
+        filteredJurnals = filteredJurnals.filter((j: any) => j.kelas === selectedClass);
+      }
+      if (selectedSubject && selectedSubject !== 'Semua Mata Pelajaran' && selectedSubject !== 'Presensi Wali Kelas') {
+        filteredJurnals = filteredJurnals.filter((j: any) => j.mataPelajaran === selectedSubject);
+      }
+      dataToExport = filteredJurnals.map((j: any, idx: number) => ({
+        "No": idx + 1,
+        "Tanggal": j.tanggal,
+        "Kelas": j.kelas,
+        "Mata Pelajaran": j.mataPelajaran,
+        "Materi Pokok": j.materi,
+        "Catatan KBM": j.catatan
+      }));
     } else {
       sheetName = "Analisis Siswa";
       dataToExport = targetStudents.map((s, idx) => {
@@ -1825,11 +2199,11 @@ export function Laporan() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mata Pelajaran</label>
-              {classSubjects.length > 0 ? (
+              {availableMapel.length > 0 ? (
                 <CustomSelect
                   value={selectedSubject}
                   onChange={(val) => setSelectedSubject(val)}
-                  options={classSubjects.map(s => ({ value: s.subjectName, label: s.subjectName }))}
+                  options={availableMapel.map(m => ({ value: m, label: m }))}
                 />
               ) : (
                 <input
@@ -1967,7 +2341,6 @@ export function Laporan() {
                       <th className="py-3 px-4 w-12">No</th>
                       <th className="py-3 px-4 w-24">Tanggal</th>
                       <th className="py-3 px-4">Materi Pokok</th>
-                      <th className="py-3 px-4 text-center w-20">Siswa</th>
                       <th className="py-3 px-4">Catatan KBM</th>
                     </tr>
                   </thead>
@@ -1977,7 +2350,6 @@ export function Laporan() {
                         <td className="py-3 px-4 text-slate-400">{row.no}</td>
                         <td className="py-3 px-4 text-slate-500 font-mono font-medium">{row.tanggal}</td>
                         <td className="py-3 px-4 font-bold text-emerald-800">{row.materi}</td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-600">{row.hadir}</td>
                         <td className="py-3 px-4 text-slate-500 font-normal italic leading-relaxed">{row.catatan}</td>
                       </tr>
                     ))}

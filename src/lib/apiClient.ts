@@ -29,8 +29,8 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
       throw new Error("Invalid JSON response from API");
     }
   } catch (error) {
-    console.error("API fetch failed:", (error as Error).message);
+    console.error("API fetch failed:", url, error);
     throw error;
   }
-};
+}
 

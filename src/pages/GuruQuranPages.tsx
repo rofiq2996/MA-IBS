@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Heart, FileBarChart, Check, GraduationCap, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
 import { mockStudents as globalStudents } from '../data/mock';
 import { TermSwitcher } from '../components/ui/TermSwitcher';
@@ -79,11 +80,30 @@ export function DashboardGuruQuran() {
 }
 
 export function GuruQuranAbsensiDhuha() {
+  const { user } = useAuth();
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
-  const [selectedClass, setSelectedClass] = useState('X-IPA 1');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [students, setStudents] = useState<any[]>([]);
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+  
+  useEffect(() => {
+    apiClient('/crud.php?table=students').then(data => {
+      if (Array.isArray(data)) setStudents(data);
+    }).catch(console.error);
 
-  // We can use mockStudentsData or import mockStudents if needed. Let's just use mockStudentsData for now
-  const availableClasses = Array.from(new Set(mockStudentsData.map(s => s.className)));
+    apiClient('/crud.php?table=teaching_assignments').then(data => {
+      if (Array.isArray(data)) setTeachingAssignments(data);
+    }).catch(console.error);
+  }, []);
+
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const availableClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+
+  useEffect(() => {
+    if (!selectedClass && availableClasses.length > 0) {
+      setSelectedClass(availableClasses[0]);
+    }
+  }, [availableClasses, selectedClass]);
 
   const handleSetStatus = (id: string, status: string) => {
     setAttendance(prev => ({ 
@@ -104,6 +124,7 @@ export function GuruQuranAbsensiDhuha() {
   };
 
   const showStudents = selectedClass !== '';
+  const classStudents = students.filter(s => s.class_name === selectedClass || s.className === selectedClass);
 
   return (
     <div className="space-y-4">
@@ -151,7 +172,7 @@ export function GuruQuranAbsensiDhuha() {
             </thead>
             <tbody>
               {showStudents ? (
-                mockStudentsData.filter(s => s.className === selectedClass).map((s, i) => {
+                classStudents.map((s, i) => {
                   const stat = attendance[s.id]?.status || '';
                   const ket = attendance[s.id]?.ket || '';
                   return (
@@ -160,19 +181,16 @@ export function GuruQuranAbsensiDhuha() {
                       <td className="py-4 px-4 text-sm font-bold text-slate-800">{s.name}</td>
                       <td className="py-4 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          {['Hadir', 'Izin', 'Sakit', 'Alpa', 'Cabut'].map(st => {
+                          {['Jamaah', 'Tidak'].map(st => {
                             let bgActive = '';
                             let textActive = 'text-white';
                             let bgInactive = '';
                             let textInactive = '';
                             let hoverBg = '';
-                            if (st === 'Hadir') { bgActive = 'bg-emerald-500'; bgInactive = 'bg-emerald-50'; textInactive = 'text-emerald-600'; hoverBg = 'hover:bg-emerald-100'; }
-                            if (st === 'Izin') { bgActive = 'bg-amber-500'; bgInactive = 'bg-amber-50'; textInactive = 'text-amber-600'; hoverBg = 'hover:bg-amber-100'; }
-                            if (st === 'Sakit') { bgActive = 'bg-blue-500'; bgInactive = 'bg-blue-50'; textInactive = 'text-blue-600'; hoverBg = 'hover:bg-blue-100'; }
-                            if (st === 'Alpa') { bgActive = 'bg-red-500'; bgInactive = 'bg-red-50'; textInactive = 'text-red-600'; hoverBg = 'hover:bg-red-100'; }
-                            if (st === 'Cabut') { bgActive = 'bg-purple-500'; bgInactive = 'bg-purple-50'; textInactive = 'text-purple-600'; hoverBg = 'hover:bg-purple-100'; }
+                            if (st === 'Jamaah') { bgActive = 'bg-emerald-500'; bgInactive = 'bg-emerald-50'; textInactive = 'text-emerald-600'; hoverBg = 'hover:bg-emerald-100'; }
+                            if (st === 'Tidak') { bgActive = 'bg-amber-500'; bgInactive = 'bg-amber-50'; textInactive = 'text-amber-600'; hoverBg = 'hover:bg-amber-100'; }
                             
-                            const stLabel = st === 'Hadir' ? 'H' : st === 'Izin' ? 'I' : st === 'Sakit' ? 'S' : st === 'Alpa' ? 'A' : 'C';
+                            const stLabel = st === 'Jamaah' ? 'J' : 'T';
 
                             return (
                               <button

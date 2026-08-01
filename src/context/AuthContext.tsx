@@ -42,6 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               try { parsedRoles = JSON.parse(parsedRoles); } catch(e) { parsedRoles = [data.user.role]; }
             }
             const updatedUser = { ...user, ...data.user, roles: parsedRoles };
+            // Preserve the currently active role if the user still has it, or if it's a sub-role like walas/guru_quran
+            if (user.role) {
+                updatedUser.role = user.role;
+            }
             setUser(updatedUser);
             if (typeof window !== 'undefined') {
               remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));

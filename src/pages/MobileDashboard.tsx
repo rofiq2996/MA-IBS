@@ -186,7 +186,6 @@ export function MobileDashboard() {
           { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-sky-600', bg: 'bg-sky-50', desc: 'Daftar & profil siswa' },
           { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Jadwal mengajar kelas' },
           { to: '/absensi', icon: CheckSquare, label: 'Absensi', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran siswa harian' },
-          { to: '/input-nilai', icon: Edit3, label: 'Input Nilai', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Input nilai kelas binaan' },
           { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar', color: 'text-violet-600', bg: 'bg-violet-50', desc: 'Catatan materi kelas' },
           { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Evaluasi & progres belajar' },
           { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi', color: 'text-red-600', bg: 'bg-red-50', desc: 'Kontrol ketertiban pagi' },
@@ -290,14 +289,23 @@ export function MobileDashboard() {
         ];
       case 'guru_quran':
         const quranLinks = [
-          { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Kelompok ngaji & biodata' },
-          { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Modul ajar' },
-          { to: '/guru-quran/hafalan', icon: Book, label: 'Input Hafalan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Catat setoran tahfiz' },
+          { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-sky-600', bg: 'bg-sky-50', desc: 'Daftar & profil siswa' },
+          { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Jadwal mengajar guru' },
+          { to: '/absensi', icon: CheckSquare, label: 'Absensi', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran siswa harian' },
           { to: '/guru-quran/dhuha', icon: Heart, label: 'Absensi Dhuha', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Input sholat dhuha siswa' },
-          { to: '/guru-quran/laporan', icon: FileBarChart, label: 'Laporan Quran', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Rekapan dhuha & tahfiz' },
-          { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Monitor sholat berjamaah' },
+          { to: '/input-nilai', icon: Edit3, label: 'Input Nilai', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Input nilai ujian & tugas' },
+          { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar', color: 'text-violet-600', bg: 'bg-violet-50', desc: 'Catatan materi pelajaran' },
+          { to: '/perangkat-ngajar', icon: Folder, label: 'Perangkat Ngajar', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'RPP, silabus & modul' },
+          { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Statistik performa siswa' },
+          { to: '/laporan', icon: FileText, label: 'Laporan', color: 'text-rose-600', bg: 'bg-rose-50', desc: 'Laporan capaian belajar' },
+          { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur', color: 'text-slate-600', bg: 'bg-slate-50', desc: 'Presensi jamaah zuhur' },
+          { to: '/leave', icon: ClipboardList, label: 'Form Perizinan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Pengajuan izin staf' },
+          { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Profil & keamanan' },
         ];
-        if (teachesXII) quranLinks.splice(3, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Ruang ujian Quran' });
+        if (teachesXII) {
+          quranLinks.splice(8, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas online siswa' });
+          quranLinks.splice(9, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Ujian berbasis komputer' });
+        }
         return quranLinks;
       default:
         return [];

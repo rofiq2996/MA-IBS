@@ -246,15 +246,8 @@ export function SholatZuhurWalas() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="w-[200px]">
-              <CustomSelect
-                value={selectedClass}
-                onChange={setSelectedClass}
-                options={[
-                  { value: '', label: 'Pilih Kelas' },
-                  ...availableClasses.map(c => ({ value: c, label: c }))
-                ]}
-              />
+            <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-bold text-slate-700 flex items-center justify-center whitespace-nowrap">
+              Kelas: {selectedClass}
             </div>
             <button 
               onClick={handleSave}
@@ -410,6 +403,7 @@ export function PrestasiWalas() {
 }
 
 export function BkWalas() {
+  const students = useWalasStudents();
   const [cases, setCases] = useState(() => {
     const saved = remoteStorage.getItem('walas_cases_data');
     return saved ? JSON.parse(saved) : [

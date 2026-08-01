@@ -5,27 +5,38 @@ import { mockClasses, mockUsers } from '../data/mock';
 import { dbClient } from '../lib/dbClient';
 import { apiClient } from '../lib/apiClient';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { remoteStorage } from '../lib/remoteStorage';
 import * as XLSX from 'xlsx';
 
 export function InputJadwal() {
   const [classes, setClasses] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   useEffect(() => {
-     apiClient('/sync').then(data => {
-        if(data.classes) setClasses(data.classes);
-        if(data.users) setUsers(data.users);
-        if(data.classes && data.classes.length > 0) {
-           setRombel(data.classes[0].name);
-           setFilterRombel(data.classes[0].name);
+    Promise.all([
+      apiClient('/crud.php?table=classes'),
+      apiClient('/crud.php?table=users')
+    ]).then(([classesData, usersData]) => {
+      if (Array.isArray(classesData)) {
+        setClasses(classesData);
+        if (classesData.length > 0) {
+          setRombel(classesData[0].name);
+          setFilterRombel(classesData[0].name);
         }
-     });
+      }
+      if (Array.isArray(usersData)) setUsers(usersData);
+    });
   }, []);
 
 
   const [subjects, setSubjects] = useState<any[]>([]);
   useEffect(() => {
     dbClient.get('subjects').then(data => {
-      if (Array.isArray(data)) setSubjects(data);
+      if (Array.isArray(data)) {
+        setSubjects(data);
+        if (data.length > 0) {
+          setMapel(data[0].name);
+        }
+      }
     });
   }, []);
 
@@ -44,8 +55,7 @@ export function InputJadwal() {
           jamMulai: d.start_time?.substring(0,5),
           jamSelesai: d.end_time?.substring(0,5),
           mapel: d.subject_name,
-          guruId: String(d.teacher_id),
-          guruName: users.find((u:any) => String(u.id) === String(d.teacher_id))?.name || 'Guru'
+          guruId: String(d.teacher_id)
         }));
         setSchedules(mapped);
       }
@@ -74,7 +84,32 @@ export function InputJadwal() {
   const [guru, setGuru] = useState('');
   
   const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const teachers = users.filter((u:any) => u.role === 'guru' || u.role === 'walas' || u.role === 'guru_quran');
+  const teachers = users.filter((u:any) => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru'));
+
+  const [assignments, setAssignments] = useState<any[]>([]);
+  useEffect(() => {
+    apiClient('/crud.php?table=teaching_assignments').then(data => {
+      if (Array.isArray(data)) {
+        setAssignments(data.map((d: any) => ({
+          id: String(d.id),
+          rombel: d.class_name || d.rombel,
+          mapel: d.subject_name || d.mapel,
+          guruId: String(d.teacher_id || d.guruId || d.guru_id)
+        })));
+      }
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (mapel && rombel && isModalOpen) {
+      const assignment = assignments.find(
+        (a) => a.mapel === mapel && a.rombel === rombel
+      );
+      if (assignment) {
+        setGuru(assignment.guruId);
+      }
+    }
+  }, [mapel, rombel, assignments, isModalOpen]);
 
   const [filterRombel, setFilterRombel] = useState(classes[0]?.name || '');
   const [filterHari, setFilterHari] = useState('Senin');
@@ -180,7 +215,7 @@ export function InputJadwal() {
     setDeletingId(id);
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!rombel || !hari || !jamMulai || !jamSelesai || !mapel || !guru) {
       window.alert('Mohon lengkapi semua data jadwal!');
       return;
@@ -188,24 +223,34 @@ export function InputJadwal() {
     
     const guruData = teachers.find(t => t.id === guru);
     
-    const newSchedule = {
-      id: editingId || Date.now().toString(),
-      rombel,
-      hari,
-      jamMulai,
-      jamSelesai,
-      mapel,
-      guruId: guru,
-      guruName: guruData?.name || ''
+    const payload = {
+      class_name: rombel,
+      day: hari,
+      start_time: jamMulai,
+      end_time: jamSelesai,
+      subject_name: mapel,
+      teacher_id: guru
     };
-    
-    if (editingId) {
-      setSchedules(schedules.map(s => s.id === editingId ? newSchedule : s));
-    } else {
-      setSchedules([...schedules, newSchedule]);
+
+    try {
+      if (editingId) {
+        await apiClient(`/crud.php?table=schedules&id=${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } else {
+        await apiClient('/crud.php?table=schedules', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+      }
+      
+      await fetchSchedules();
+      setIsModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      window.alert('Gagal menyimpan jadwal');
     }
-    
-    setIsModalOpen(false);
   };
 
   const filteredSchedules = schedules
@@ -293,13 +338,16 @@ export function InputJadwal() {
                     </td>
                   </tr>
                 ) : (
-                  filteredSchedules.map(s => (
+                  filteredSchedules.map(s => {
+                    const teacher = users.find(u => String(u.id) === String(s.guruId));
+                    const displayName = teacher ? teacher.name : 'Guru Tidak Ditemukan';
+                    return (
                     <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-slate-600">
                         {s.jamMulai} - {s.jamSelesai}
                       </td>
                       <td className="py-3 px-4 font-bold text-slate-800">{s.mapel}</td>
-                      <td className="py-3 px-4 text-slate-600">{s.guruName}</td>
+                      <td className="py-3 px-4 text-slate-600">{displayName}</td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => openEdit(s)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
@@ -311,7 +359,7 @@ export function InputJadwal() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>
@@ -327,7 +375,10 @@ export function InputJadwal() {
                 </div>
               </div>
             ) : (
-              filteredSchedules.map(s => (
+              filteredSchedules.map(s => {
+                const teacher = users.find(u => String(u.id) === String(s.guruId));
+                const displayName = teacher ? teacher.name : 'Guru Tidak Ditemukan';
+                return (
                 <div key={s.id} className="p-4 flex flex-col gap-2 bg-white hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
@@ -352,10 +403,10 @@ export function InputJadwal() {
 
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
                     <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{s.guruName}</span>
+                    <span className="truncate">{displayName}</span>
                   </div>
                 </div>
-              ))
+              )})
             )}
           </div>
         </CardContent>
