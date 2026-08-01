@@ -85,8 +85,8 @@ export function Login() {
           </div>
           
           <div className="relative z-10 flex flex-col items-center text-center mt-0">
-            <div className="w-24 sm:w-28 md:w-32 lg:w-40 my-1 md:my-2 flex justify-center items-center">
-              <img src="/logo.png" alt="Logo MAS Al-Ihsan" className="w-full h-auto max-h-24 md:max-h-32 object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.85)]" />
+            <div className="w-20 md:w-28 lg:w-36 my-1 md:my-2">
+              <img src="/logo.png" alt="Logo MAS Al-Ihsan" className="w-full h-auto object-contain drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" />
             </div>
             
             <h2 className="text-base md:text-2xl font-bold mb-1 md:mb-4">Keutamaan Menuntut Ilmu</h2>

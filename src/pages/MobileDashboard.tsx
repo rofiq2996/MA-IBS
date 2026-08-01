@@ -447,9 +447,6 @@ export function MobileDashboard() {
           </div>
 
           <div className="flex flex-col items-end shrink-0 pl-1 gap-1">
-            {/* SCHOOL LOGO */}
-            <img src="/logo.png" alt="Logo MAS Al-Ihsan" className="h-7 sm:h-8 w-auto object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
-
             {/* ROLE BADGE & SWITCHER */}
             {user?.roles && user.roles.length > 1 ? (
               <div className="relative inline-block mt-1" ref={roleMenuRef}>
