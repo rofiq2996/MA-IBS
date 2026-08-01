@@ -141,7 +141,7 @@ export function AppLayout() {
               </button>
             ) : (
               <div className="flex items-center space-x-2 shrink-0 sm:hidden">
-                <img src="https://iili.io/COPrcyG.png" alt="SIKAT MA AL-IHSAN Logo" className="h-9 w-auto max-w-[100px] object-contain shrink-0" />
+                <img src="/logo.png" alt="SIKAT MA AL-IHSAN Logo" className="h-9 w-auto max-w-[100px] object-contain shrink-0" />
                 <div className="leading-tight">
                   <h1 className="font-black text-xs text-slate-800 tracking-wider">SIKAT MA AL-IHSAN</h1>
                   <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest">SYSTEM v1.0</p>

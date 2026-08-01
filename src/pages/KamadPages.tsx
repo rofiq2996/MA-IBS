@@ -13,6 +13,8 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { DEFAULT_MODUL_AJAR, ModulAjarItem } from './GuruPages';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
@@ -1349,11 +1351,11 @@ export function KamadApprovalIzin() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800"><CheckCircle className="w-3.5 h-3.5" /> Disetujui</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800"><CheckCircle2 className="w-3.5 h-3.5" /> Disetujui</span>;
       case 'rejected':
         return <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-red-100 text-red-800"><XCircle className="w-3.5 h-3.5" /> Ditolak</span>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800"><Clock4 className="w-3.5 h-3.5" /> Menunggu</span>;
+        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-800"><Clock className="w-3.5 h-3.5" /> Menunggu</span>;
     }
   };
 

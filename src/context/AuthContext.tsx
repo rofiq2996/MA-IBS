@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window !== 'undefined') {
-      const stored = remoteStorage.getItem('currentUser');
+      const stored = localStorage.getItem('currentUser');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
@@ -30,10 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Re-fetch user data on mount to keep avatar and other profile info synced
   useEffect(() => {
     if (user && user.username) {
-      // Since we don't have a verify token endpoint, we could just do a check or 
-      // rely on the user to re-login to fully sync if there isn't a better endpoint.
-      // Actually, we don't have the user's password here.
-      // So let's create a quick api/get_user.php endpoint to fetch the latest avatar!
       apiClient(`/get_user.php?id=${user.id}`)
         .then(data => {
           if (data.status === 'success' && data.user) {
@@ -48,14 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             setUser(updatedUser);
             if (typeof window !== 'undefined') {
-              remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
+              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
             }
           }
         })
         .catch(err => console.warn('Sync user data failed or unavailable:', err.message));
     }
   }, []);
-
 
   const login = (userId: string, apiUser?: any) => {
     if (apiUser) {
@@ -70,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const u = { ...apiUser, roles: parsedRoles };
         setUser(u);
         if (typeof window !== 'undefined') {
-          remoteStorage.setItem('currentUser', JSON.stringify(u));
+          localStorage.setItem('currentUser', JSON.stringify(u));
         }
         return;
     }
@@ -81,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { ...user, role };
       setUser(updatedUser);
       if (typeof window !== 'undefined') {
-        remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
     }
   };
@@ -91,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
       if (typeof window !== 'undefined') {
-        remoteStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
       
       if (updates.avatar && user.id) {
@@ -107,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              const finalUser = { ...updatedUser, avatar: result.avatar_url };
              setUser(finalUser);
              if (typeof window !== 'undefined') {
-                remoteStorage.setItem('currentUser', JSON.stringify(finalUser));
+                localStorage.setItem('currentUser', JSON.stringify(finalUser));
              }
           }
         } catch (error) {
@@ -120,8 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     if (typeof window !== 'undefined') {
-      remoteStorage.removeItem('currentUser');
-      remoteStorage.removeItem('selectedAcademicTermId');
+      localStorage.removeItem('currentUser');
     }
   };
 

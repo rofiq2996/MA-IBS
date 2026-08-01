@@ -48,20 +48,17 @@ export function AdminUsers() {
   const [classOptions, setClassOptions] = useState<{value: string, label: string}[]>([]);
   
   useEffect(() => {
-    let sOpts = [
-      { value: 'Matematika Peminatan', label: 'Matematika Peminatan' },
-      { value: 'Matematika Wajib', label: 'Matematika Wajib' },
-      { value: 'Tahfidz Al-Quran', label: 'Tahfidz Al-Quran' }
-    ];
-    
-    setSubjectOptions(sOpts);
-    
-    let cOpts = [
-      { value: 'X-IPA 1', label: 'X-IPA 1' },
-      { value: 'X-IPA 2', label: 'X-IPA 2' }
-    ];
-    
-    setClassOptions(cOpts);
+    apiClient('/crud.php?table=subjects').then(data => {
+      if (Array.isArray(data)) {
+        setSubjectOptions(data.map(s => ({ value: s.name, label: s.name })));
+      }
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=classes').then(data => {
+      if (Array.isArray(data)) {
+        setClassOptions(data.map(c => ({ value: c.name, label: c.name })));
+      }
+    }).catch(console.error);
   }, []);
   
 

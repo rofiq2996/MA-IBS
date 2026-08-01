@@ -208,6 +208,7 @@ export function MobileDashboard() {
           { to: '/students', icon: BookOpen, label: 'Siswa & Kelas', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Data induk kesiswaan' },
           { to: '/admin/subjects', icon: BookOpenCheck, label: 'Mata Pelajaran', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Daftar kurikulum pelajaran' },
           { to: '/admin/plotting', icon: UserCheck, label: 'Plotting Pengajar', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Tugas mengajar guru' },
+          { to: '/admin/jadwal', icon: CalendarDays, label: 'Jadwal Pelajaran', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Atur jadwal kelas' },
           { to: '/admin/terms', icon: Calendar, label: 'Tahun Ajaran', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Semester & kalender aktif' },
           { to: '/admin/reports', icon: FileBarChart, label: 'Laporan & Stat', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Analisis statistik madrasah' },
           { to: '/admin/sarpras', icon: Building2, label: 'Sarpras', color: 'text-rose-600', bg: 'bg-rose-50', desc: 'Aset dan sarana prasarana' },
@@ -446,6 +447,9 @@ export function MobileDashboard() {
           </div>
 
           <div className="flex flex-col items-end shrink-0 pl-1 gap-1">
+            {/* SCHOOL LOGO */}
+            <img src="/logo.png" alt="Logo MAS Al-Ihsan" className="h-7 sm:h-8 w-auto object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
+
             {/* ROLE BADGE & SWITCHER */}
             {user?.roles && user.roles.length > 1 ? (
               <div className="relative inline-block mt-1" ref={roleMenuRef}>

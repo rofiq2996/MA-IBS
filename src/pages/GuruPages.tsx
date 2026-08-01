@@ -969,7 +969,7 @@ export function JurnalMengajar() {
   // Combine schedules and subjects
   const allPairs = Array.from(new Set(teacherAssignments.map(s => `${s.subject_name} - ${s.class_name}`))).filter(Boolean).sort();
   
-  const options = allPairs.map(p => ({
+  const options = (allPairs as string[]).map(p => ({
     value: p,
     label: p
   }));

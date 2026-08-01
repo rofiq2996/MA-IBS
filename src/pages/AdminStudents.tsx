@@ -136,7 +136,6 @@ export function AdminStudents() {
         name: u.name,
         username: u.username,
         role: u.role,
-        roles: [u.role],
         gender: u.gender, className: u.class_name, childId: u.child_id, roles: typeof u.roles === "string" ? JSON.parse(u.roles) : u.roles || [u.role],
       }));
       setUsers(mappedUsers);

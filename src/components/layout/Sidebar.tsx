@@ -236,7 +236,7 @@ export function Sidebar() {
     <aside className="hidden sm:flex flex-col w-64 bg-emerald-900 text-white h-screen shrink-0">
       <div className="p-6 border-b border-emerald-800/50">
         <div className="flex items-center space-x-3">
-          <img src="https://iili.io/COPrcyG.png" alt="Logo" className="h-10 w-auto max-w-[120px] object-contain shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          <img src="/logo.png" alt="Logo" className="h-10 w-auto max-w-[120px] object-contain shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
           <div className="leading-none">
             <h1 className="font-bold text-sm uppercase tracking-wider line-clamp-2">SIKAT MA AL-IHSAN<br/>IBS Riau</h1>
             <span className="text-[10px] text-emerald-400 font-medium tracking-widest mt-1 inline-block">SYSTEM v1.0</span>
