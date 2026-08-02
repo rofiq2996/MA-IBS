@@ -84,7 +84,7 @@ export function InputJadwal() {
   const [guru, setGuru] = useState('');
   
   const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const teachers = users.filter((u:any) => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru'));
+  const teachers = users.filter((u:any) => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru') || u.roles?.includes('guru_quran'));
 
   const [assignments, setAssignments] = useState<any[]>([]);
   useEffect(() => {
@@ -100,6 +100,8 @@ export function InputJadwal() {
     }).catch(console.error);
   }, []);
 
+  const [isGuruLocked, setIsGuruLocked] = useState(false);
+
   useEffect(() => {
     if (mapel && rombel && isModalOpen) {
       const assignment = assignments.find(
@@ -107,7 +109,12 @@ export function InputJadwal() {
       );
       if (assignment) {
         setGuru(assignment.guruId);
+        setIsGuruLocked(true);
+      } else {
+        setIsGuruLocked(false);
       }
+    } else {
+      setIsGuruLocked(false);
     }
   }, [mapel, rombel, assignments, isModalOpen]);
 
@@ -476,13 +483,17 @@ export function InputJadwal() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Guru Pengajar</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase">Guru Pengajar</label>
+                  {isGuruLocked && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Terkunci (Plotting)</span>}
+                </div>
                 <CustomSelect 
                   value={guru}
                   onChange={v => setGuru(v)}
                   options={teachers.map(t => ({ value: String(t.id), label: t.name }))}
                   placeholder="Pilih Guru"
                   searchable={true}
+                  disabled={isGuruLocked}
                 />
               </div>
             </div>

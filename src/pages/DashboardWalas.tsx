@@ -35,8 +35,6 @@ export function DashboardWalas() {
     { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
     { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
     { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
-    { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
-    { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
     { to: '/laporan', icon: ClipboardList, label: 'Cetak Laporan' },
     { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi' },
     { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap' },

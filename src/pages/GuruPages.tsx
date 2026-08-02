@@ -364,6 +364,7 @@ export function JadwalMengajar() {
 export function Absensi() {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
+  const [isLocked, setIsLocked] = useState(false);
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [dbClasses, setDbClasses] = useState<string[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -421,6 +422,28 @@ export function Absensi() {
   const [selectedMapel, setSelectedMapel] = useState('');
 
   useEffect(() => {
+    if (selectedClass && selectedMapel) {
+      const storageKey = `attendance_${selectedClass}_${selectedMapel}`;
+      const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      const today = new Date().toISOString().split('T')[0];
+      if (existingData[today]) {
+        setAttendance(existingData[today]);
+        setIsLocked(true);
+      } else {
+        const classStudents = studentsList.filter(s => s.class_name === selectedClass || s.className === selectedClass);
+        const mockClassStudents = mockStudents.filter(s => s.className === selectedClass);
+        const targetStudents = classStudents.length > 0 ? classStudents : (mockClassStudents.length > 0 ? mockClassStudents : mockStudents);
+        const defaultAtt: Record<string, { status: string; ket: string }> = {};
+        targetStudents.forEach(s => {
+          defaultAtt[s.id] = { status: 'Hadir', ket: '' };
+        });
+        setAttendance(defaultAtt);
+        setIsLocked(false);
+      }
+    }
+  }, [selectedClass, selectedMapel, studentsList]);
+
+  useEffect(() => {
     if (!selectedClass && availableClasses.length > 0) {
       if (isWalasRole && walasClass) {
         setSelectedClass(walasClass);
@@ -434,26 +457,28 @@ export function Absensi() {
   const classSubjectsList = Array.from(new Set(classAssignments.map((a: any) => a.subject_name))).filter(Boolean) as string[];
 
   let availableMapel = classSubjectsList;
+  const isGuruMode = user?.role === 'guru_mapel' || user?.role === 'guru_quran';
+  const showWalasPresensi = isWalas && selectedClass === walasClass && !isGuruMode;
   
   if (isWalasRole) {
     availableMapel = ['Presensi Wali Kelas'];
-  } else if (isWalas && selectedClass === walasClass) {
+  } else if (showWalasPresensi) {
     availableMapel = ['Presensi Wali Kelas', ...classSubjectsList];
   }
 
-  if (availableMapel.length === 0 && selectedClass === walasClass) {
+  if (availableMapel.length === 0 && showWalasPresensi) {
     availableMapel = ['Presensi Wali Kelas'];
   }
 
   useEffect(() => {
     if (availableMapel.length > 0 && !availableMapel.includes(selectedMapel)) {
-      if (isWalasRole || (isWalas && selectedClass === walasClass)) {
+      if (isWalasRole || showWalasPresensi) {
         setSelectedMapel('Presensi Wali Kelas');
       } else {
         setSelectedMapel(availableMapel[0] || '');
       }
     }
-  }, [selectedClass, availableMapel, selectedMapel, isWalas, isWalasRole, walasClass]);
+  }, [selectedClass, availableMapel, selectedMapel, isWalasRole, showWalasPresensi]);
 
   const limitAbsenSiswa = remoteStorage.getItem('limit_absen_siswa') || '15:00';
   const [limitHour, limitMinute] = limitAbsenSiswa.split(':').map(Number);
@@ -483,6 +508,7 @@ export function Absensi() {
   }
 
   const handleSetStatus = (id: string, status: string) => {
+    if (isLocked) return;
     setAttendance(prev => ({ 
       ...prev, 
       [id]: { 
@@ -493,6 +519,7 @@ export function Absensi() {
   };
   
   const handleSetKet = (id: string, ket: string) => {
+    if (isLocked) return;
     setAttendance(prev => ({ ...prev, [id]: { ...prev[id], ket } }));
   };
 
@@ -524,6 +551,7 @@ export function Absensi() {
     const today = new Date().toISOString().split('T')[0];
     existingData[today] = attendance;
     remoteStorage.setItem(storageKey, JSON.stringify(existingData));
+    setIsLocked(true);
     
     window.alert("Absensi berhasil disimpan!");
   };
@@ -593,13 +621,23 @@ export function Absensi() {
               </div>
 
             {/* Simpan Button below them on HP */}
-            <button 
-              onClick={handleSave}
-              className="w-full md:w-auto px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Simpan
-            </button>
+            {isLocked ? (
+              <button 
+                onClick={() => setIsLocked(false)}
+                className="w-full md:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Absensi
+              </button>
+            ) : (
+              <button 
+                onClick={handleSave}
+                className="w-full md:w-auto px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Simpan
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -649,7 +687,8 @@ export function Absensi() {
                               <button
                                 key={st}
                                 onClick={() => handleSetStatus(s.id, st)}
-                                className={"w-8 h-8 flex items-center justify-center rounded-md border text-xs font-bold transition-colors " + (stat === st ? (bgActive + " " + textActive + " border-transparent shadow-sm") : (bgInactive + " " + textInactive + " " + hoverBg + " border-slate-200/60"))}
+                                disabled={isLocked}
+                                className={"w-8 h-8 flex items-center justify-center rounded-md border text-xs font-bold transition-colors " + (stat === st ? (bgActive + " " + textActive + " border-transparent shadow-sm") : (bgInactive + " " + textInactive + " " + hoverBg + " border-slate-200/60")) + (isLocked ? " opacity-50 cursor-not-allowed" : "")}
                               >
                                 {stLabel}
                               </button>
@@ -662,8 +701,9 @@ export function Absensi() {
                           type="text"
                           placeholder="Tambahkan keterangan..."
                           value={ket}
+                          disabled={isLocked}
                           onChange={(e) => handleSetKet(s.id, e.target.value)}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-emerald-500 transition-colors"
+                          className={`w-full px-3 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-emerald-500 transition-colors ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
                         />
                       </td>
                     </tr>
@@ -1812,7 +1852,8 @@ export function Laporan() {
     }).catch(console.error);
   }, []);
 
-  const isWalas = user?.role === 'walas' || user?.roles?.includes('walas');
+  const isWalas = user?.role === 'walas';
+  const isGuruQuran = user?.role === 'guru_quran';
   const walasClass = user?.className || user?.class_name;
   
   const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
@@ -1820,7 +1861,7 @@ export function Laporan() {
   const subjectClasses = Array.from(new Set(subjects.map((s: any) => s.className))).filter(Boolean) as string[];
 
   // State for form selection
-  const [reportType, setReportType] = useState<'presensi' | 'nilai' | 'jurnal' | 'analisis'>('presensi');
+  const [reportType, setReportType] = useState<'presensi' | 'nilai' | 'jurnal' | 'analisis' | 'sholat_dhuha'>('presensi');
   
   // Available classes based on teacher's schedules and subjects
   const availableClasses = Array.from(new Set([
@@ -1848,22 +1889,29 @@ export function Laporan() {
     ? Array.from(new Set(classSchedules.map(s => s.subject_name))).filter(Boolean) as string[]
     : Array.from(new Set(subjects.filter((s: any) => s.className === selectedClass).map((s: any) => s.subjectName))).filter(Boolean) as string[];
 
-  let availableMapel = isWalas && selectedClass === walasClass 
+  const isGuruMode = user?.role === 'guru_mapel' || user?.role === 'guru_quran';
+  const showWalasPresensi = isWalas && selectedClass === walasClass && !isGuruMode;
+
+  let availableMapel = showWalasPresensi
     ? ['Presensi Wali Kelas', ...classSubjectsList] 
     : classSubjectsList;
+
+  if (availableMapel.length === 0 && showWalasPresensi) {
+    availableMapel = ['Presensi Wali Kelas'];
+  }
 
   const [selectedSubject, setSelectedSubject] = useState('');
 
   // When class changes, update the subject to the first one available for that class
   useEffect(() => {
     if (availableMapel.length > 0 && !availableMapel.includes(selectedSubject)) {
-      if (isWalas && selectedClass === walasClass) {
+      if (showWalasPresensi) {
         setSelectedSubject('Presensi Wali Kelas');
       } else {
         setSelectedSubject(availableMapel[0]);
       }
     }
-  }, [selectedClass, availableMapel, selectedSubject, isWalas, walasClass]);
+  }, [selectedClass, availableMapel, selectedSubject, showWalasPresensi]);
 
   const [selectedMonth, setSelectedMonth] = useState('Juli');
   const [selectedSemester, setSelectedSemester] = useState('Ganjil 2026/2027');
@@ -1897,6 +1945,7 @@ export function Laporan() {
         let sick = s.attendance?.sick || 0;
         let permission = s.attendance?.permission || 0;
         let absent = s.attendance?.absent || 0;
+        let cabut = s.attendance?.cabut || 0;
 
         // Aggregate local storage data for this student
         Object.values(savedData).forEach((dailyData: any) => {
@@ -1905,9 +1954,10 @@ export function Laporan() {
           else if (status === 'Sakit') sick++;
           else if (status === 'Izin') permission++;
           else if (status === 'Alpa') absent++;
+          else if (status === 'Cabut') cabut++;
         });
         
-        const total = present + sick + permission + absent || 1;
+        const total = present + sick + permission + absent + cabut || 1;
         
         return {
           no: idx + 1,
@@ -1917,10 +1967,38 @@ export function Laporan() {
           sakit: sick,
           izin: permission,
           alpa: absent,
+          cabut: cabut,
           persentase: `${Math.round((present / total) * 100)}%`
         };
       });
     } else if (reportType === 'nilai') {
+      if (isWalas) {
+        const storageKey = `ibadah_${selectedClass}`;
+        const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+        
+        return targetStudents.map((s, idx) => {
+          let jamaah = 0;
+          let tidak = 0;
+          
+          Object.values(savedData).forEach((dailyData: any) => {
+            const status = dailyData[s.id]?.status;
+            if (status === 'Jamaah') jamaah++;
+            else if (status === 'Tidak Jamaah' || status === 'Tidak') tidak++;
+          });
+          
+          const total = jamaah + tidak || 1;
+          
+          return {
+            no: idx + 1,
+            nama: s.name,
+            nis: s.nis,
+            jamaah,
+            tidak,
+            persentase: `${Math.round((jamaah / total) * 100)}%`
+          };
+        });
+      }
+
       const storageKey = `grades_${selectedClass}_${selectedSubject}`;
       const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
 
@@ -1958,6 +2036,31 @@ export function Laporan() {
           akhir: akhir || '-',
           predikat: akhir ? predikat : '-',
           ket: akhir >= 75 ? "Lulus" : (akhir > 0 ? "Remedial" : "-")
+        };
+      });
+    } else if (reportType === 'sholat_dhuha') {
+      const storageKey = `dhuha_${selectedClass}`;
+      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      
+      return targetStudents.map((s, idx) => {
+        let jamaah = 0;
+        let tidak = 0;
+        
+        Object.values(savedData).forEach((dailyData: any) => {
+          const status = dailyData[s.id]?.status;
+          if (status === 'Jamaah') jamaah++;
+          else if (status === 'Tidak Jamaah' || status === 'Tidak') tidak++;
+        });
+        
+        const total = jamaah + tidak || 1;
+        
+        return {
+          no: idx + 1,
+          nama: s.name,
+          nis: s.nis,
+          jamaah,
+          tidak,
+          persentase: `${Math.round((jamaah / total) * 100)}%`
         };
       });
     } else if (reportType === 'jurnal') {
@@ -2009,41 +2112,66 @@ export function Laporan() {
 
     if (reportType === 'presensi') {
       sheetName = "Rekap Presensi";
-      dataToExport = targetStudents.map((s, idx) => ({
-        "No": idx + 1,
-        "Nama Siswa": s.name,
-        "NIS": s.nis,
-        "Kelas": s.className,
+      dataToExport = previewRows.map((row) => ({
+        "No": row.no,
+        "Nama Siswa": row.nama,
+        "NIS": row.nis,
+        "Kelas": selectedClass,
         "Mata Pelajaran": selectedSubject,
-        "Hadir (Hari)": s.attendance?.present || 0,
-        "Sakit (Hari)": s.attendance?.sick || 0,
-        "Izin (Hari)": s.attendance?.permission || 0,
-        "Alpa (Hari)": s.attendance?.absent || 0,
-        "Persentase Kehadiran": `${Math.round(((s.attendance?.present || 0) / ((s.attendance?.present || 0) + (s.attendance?.sick || 0) + (s.attendance?.permission || 0) + (s.attendance?.absent || 0) || 1)) * 100)}%`
+        "Hadir (Hari)": row.hadir,
+        "Sakit (Hari)": row.sakit,
+        "Izin (Hari)": row.izin,
+        "Alpa (Hari)": row.alpa,
+        "Cabut (Hari)": row.cabut,
+        "Persentase Kehadiran": row.persentase
       }));
     } else if (reportType === 'nilai') {
-      sheetName = "Leger Nilai";
-      dataToExport = targetStudents.map((s, idx) => {
-        const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
-        const tugas = (charCodeSum % 20) + 75;
-        const uts = ((charCodeSum * 2) % 25) + 70;
-        const uas = ((charCodeSum * 3) % 25) + 70;
-        const akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
-        const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
-        return {
-          "No": idx + 1,
-          "Nama Siswa": s.name,
-          "NIS": s.nis,
-          "Kelas": s.className,
-          "Mata Pelajaran": selectedSubject,
-          "Nilai Tugas (40%)": tugas,
-          "Nilai UTS (30%)": uts,
-          "Nilai UAS (30%)": uas,
-          "Nilai Akhir": akhir,
-          "Predikat": predikat,
-          "Keterangan": akhir >= 75 ? "Lulus KKM" : "Remedial"
-        };
-      });
+      if (isWalas) {
+        sheetName = "Laporan Sholat Zuhur";
+        dataToExport = previewRows.map(row => ({
+          "No": row.no,
+          "Nama Siswa": row.nama,
+          "NIS": row.nis,
+          "Kelas": selectedClass,
+          "Jamaah": row.jamaah,
+          "Tidak Jamaah": row.tidak,
+          "Persentase": row.persentase
+        }));
+      } else {
+        sheetName = "Leger Nilai";
+        dataToExport = targetStudents.map((s, idx) => {
+          const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
+          const tugas = (charCodeSum % 20) + 75;
+          const uts = ((charCodeSum * 2) % 25) + 70;
+          const uas = ((charCodeSum * 3) % 25) + 70;
+          const akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
+          const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
+          return {
+            "No": idx + 1,
+            "Nama Siswa": s.name,
+            "NIS": s.nis,
+            "Kelas": s.className,
+            "Mata Pelajaran": selectedSubject,
+            "Nilai Tugas (40%)": tugas,
+            "Nilai UTS (30%)": uts,
+            "Nilai UAS (30%)": uas,
+            "Nilai Akhir": akhir,
+            "Predikat": predikat,
+            "Keterangan": akhir >= 75 ? "Lulus KKM" : "Remedial"
+          };
+        });
+      }
+    } else if (reportType === 'sholat_dhuha') {
+      sheetName = "Laporan Sholat Dhuha";
+      dataToExport = previewRows.map(row => ({
+        "No": row.no,
+        "Nama Siswa": row.nama,
+        "NIS": row.nis,
+        "Kelas": selectedClass,
+        "Jamaah": row.jamaah,
+        "Tidak Jamaah": row.tidak,
+        "Persentase": row.persentase
+      }));
     } else if (reportType === 'jurnal') {
       sheetName = "Jurnal Mengajar";
       const savedJurnals = JSON.parse(remoteStorage.getItem('jurnals') || '[]');
@@ -2144,36 +2272,84 @@ export function Laporan() {
           <CardContent className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tipe Laporan</label>
-              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setReportType('presensi')}
-                  className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Presensi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportType('nilai')}
-                  className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Nilai
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportType('jurnal')}
-                  className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Jurnal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportType('analisis')}
-                  className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Analisis
-                </button>
-              </div>
+              {isGuruQuran ? (
+                <div className="flex flex-col gap-1 p-1 bg-slate-100 rounded-lg">
+                  <div className="grid grid-cols-3 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setReportType('presensi')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Presensi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('nilai')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Nilai
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('jurnal')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Jurnal
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setReportType('analisis')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Analisis
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('sholat_dhuha')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'sholat_dhuha' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Dhuha
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className={`grid ${isWalas ? 'grid-cols-2' : 'grid-cols-4'} gap-1 p-1 bg-slate-100 rounded-lg`}>
+                  <button
+                    type="button"
+                    onClick={() => setReportType('presensi')}
+                    className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    Presensi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportType('nilai')}
+                    className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    {isWalas ? 'Sholat Zuhur' : 'Nilai'}
+                  </button>
+                  {!isWalas && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setReportType('jurnal')}
+                        className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        Jurnal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportType('analisis')}
+                        className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        Analisis
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -2197,23 +2373,25 @@ export function Laporan() {
               )}
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mata Pelajaran</label>
-              {availableMapel.length > 0 ? (
-                <CustomSelect
-                  value={selectedSubject}
-                  onChange={(val) => setSelectedSubject(val)}
-                  options={availableMapel.map(m => ({ value: m, label: m }))}
-                />
-              ) : (
-                <input
-                  type="text"
-                  disabled
-                  value={selectedSubject}
-                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-400 outline-none"
-                />
-              )}
-            </div>
+            {!isWalas && (
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mata Pelajaran</label>
+                {availableMapel.length > 0 ? (
+                  <CustomSelect
+                    value={selectedSubject}
+                    onChange={(val) => setSelectedSubject(val)}
+                    options={availableMapel.map(m => ({ value: m, label: m }))}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    disabled
+                    value={selectedSubject}
+                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-400 outline-none"
+                  />
+                )}
+              </div>
+            )}
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tahun Ajaran / Semester</label>
@@ -2257,7 +2435,8 @@ export function Laporan() {
               <CardTitle>Pratinjau Data Laporan</CardTitle>
               <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                 {reportType === 'presensi' && 'REKAP ABSENSI KEHADIRAN SISWA'}
-                {reportType === 'nilai' && 'LEGER NILAI ULANGAN & TUGAS'}
+                {reportType === 'nilai' && (isWalas ? 'LAPORAN SHOLAT ZUHUR BERJAMAAH' : 'LEGER NILAI ULANGAN & TUGAS')}
+                {reportType === 'sholat_dhuha' && 'LAPORAN SHOLAT DHUHA BERJAMAAH'}
                 {reportType === 'jurnal' && 'JURNAL KEGIATAN MENGAJAR GURU'}
                 {reportType === 'analisis' && 'ANALISIS PERKEMBANGAN BELAJAR SISWA'}
                 {` • Kelas ${selectedClass} • ${selectedSubject}`}
@@ -2277,6 +2456,7 @@ export function Laporan() {
                       <th className="py-3 px-4 text-center">S</th>
                       <th className="py-3 px-4 text-center">I</th>
                       <th className="py-3 px-4 text-center">A</th>
+                      <th className="py-3 px-4 text-center">C</th>
                       <th className="py-3 px-4 text-right">Persentase</th>
                     </tr>
                   </thead>
@@ -2290,6 +2470,7 @@ export function Laporan() {
                         <td className="py-3 px-4 text-center text-blue-600">{row.sakit}</td>
                         <td className="py-3 px-4 text-center text-amber-600">{row.izin}</td>
                         <td className="py-3 px-4 text-center text-red-600">{row.alpa}</td>
+                        <td className="py-3 px-4 text-center text-purple-600">{row.cabut}</td>
                         <td className="py-3 px-4 text-right text-slate-800 font-bold font-mono">{row.persentase}</td>
                       </tr>
                     ))}
@@ -2304,12 +2485,22 @@ export function Laporan() {
                       <th className="py-3 px-4 w-12">No</th>
                       <th className="py-3 px-4">Nama Siswa</th>
                       <th className="py-3 px-4">NIS</th>
-                      <th className="py-3 px-4 text-center">Tugas</th>
-                      <th className="py-3 px-4 text-center">UTS</th>
-                      <th className="py-3 px-4 text-center">UAS</th>
-                      <th className="py-3 px-4 text-center">Akhir</th>
-                      <th className="py-3 px-4 text-center">Grade</th>
-                      <th className="py-3 px-4 text-right">Ket.</th>
+                      {isWalas ? (
+                        <>
+                          <th className="py-3 px-4 text-center">Jamaah</th>
+                          <th className="py-3 px-4 text-center">Tidak Jamaah</th>
+                          <th className="py-3 px-4 text-right">Persentase</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="py-3 px-4 text-center">Tugas</th>
+                          <th className="py-3 px-4 text-center">UTS</th>
+                          <th className="py-3 px-4 text-center">UAS</th>
+                          <th className="py-3 px-4 text-center">Akhir</th>
+                          <th className="py-3 px-4 text-center">Grade</th>
+                          <th className="py-3 px-4 text-right">Ket.</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="text-xs font-semibold text-slate-700 divide-y divide-slate-100">
@@ -2318,16 +2509,53 @@ export function Laporan() {
                         <td className="py-3 px-4 text-slate-400">{row.no}</td>
                         <td className="py-3 px-4 font-bold text-slate-800">{row.nama}</td>
                         <td className="py-3 px-4 text-slate-500 font-mono">{row.nis}</td>
-                        <td className="py-3 px-4 text-center font-mono">{row.tugas}</td>
-                        <td className="py-3 px-4 text-center font-mono">{row.uts}</td>
-                        <td className="py-3 px-4 text-center font-mono">{row.uas}</td>
-                        <td className="py-3 px-4 text-center font-bold font-mono text-emerald-700 bg-emerald-50/30">{row.akhir}</td>
-                        <td className="py-3 px-4 text-center font-bold text-slate-800">{row.predikat}</td>
-                        <td className="py-3 px-4 text-right font-bold text-slate-600">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${row.ket === 'Lulus' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                            {row.ket}
-                          </span>
-                        </td>
+                        {isWalas ? (
+                          <>
+                            <td className="py-3 px-4 text-center text-emerald-600 font-bold">{row.jamaah}</td>
+                            <td className="py-3 px-4 text-center text-red-600 font-bold">{row.tidak}</td>
+                            <td className="py-3 px-4 text-right font-bold text-slate-800 font-mono">{row.persentase}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-3 px-4 text-center font-mono">{row.tugas}</td>
+                            <td className="py-3 px-4 text-center font-mono">{row.uts}</td>
+                            <td className="py-3 px-4 text-center font-mono">{row.uas}</td>
+                            <td className="py-3 px-4 text-center font-bold font-mono text-emerald-700 bg-emerald-50/30">{row.akhir}</td>
+                            <td className="py-3 px-4 text-center font-bold text-slate-800">{row.predikat}</td>
+                            <td className="py-3 px-4 text-right font-bold text-slate-600">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${row.ket === 'Lulus' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                {row.ket}
+                              </span>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
+
+              {reportType === 'sholat_dhuha' && (
+                <>
+                  <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    <tr>
+                      <th className="py-3 px-4 w-12">No</th>
+                      <th className="py-3 px-4">Nama Siswa</th>
+                      <th className="py-3 px-4">NIS</th>
+                      <th className="py-3 px-4 text-center">Jamaah</th>
+                      <th className="py-3 px-4 text-center">Tidak Jamaah</th>
+                      <th className="py-3 px-4 text-right">Persentase</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs font-semibold text-slate-700 divide-y divide-slate-100">
+                    {previewRows.map((row: any) => (
+                      <tr key={row.no} className="hover:bg-slate-50/50">
+                        <td className="py-3 px-4 text-slate-400">{row.no}</td>
+                        <td className="py-3 px-4 font-bold text-slate-800">{row.nama}</td>
+                        <td className="py-3 px-4 text-slate-500 font-mono">{row.nis}</td>
+                        <td className="py-3 px-4 text-center text-emerald-600 font-bold">{row.jamaah}</td>
+                        <td className="py-3 px-4 text-center text-red-600 font-bold">{row.tidak}</td>
+                        <td className="py-3 px-4 text-right font-bold text-slate-800 font-mono">{row.persentase}</td>
                       </tr>
                     ))}
                   </tbody>

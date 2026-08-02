@@ -186,8 +186,6 @@ export function MobileDashboard() {
           { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-sky-600', bg: 'bg-sky-50', desc: 'Daftar & profil siswa' },
           { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Jadwal mengajar kelas' },
           { to: '/absensi', icon: CheckSquare, label: 'Absensi', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran siswa harian' },
-          { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar', color: 'text-violet-600', bg: 'bg-violet-50', desc: 'Catatan materi kelas' },
-          { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa', color: 'text-teal-600', bg: 'bg-teal-50', desc: 'Evaluasi & progres belajar' },
           { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi', color: 'text-red-600', bg: 'bg-red-50', desc: 'Kontrol ketertiban pagi' },
           { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Penilaian akhlak siswa' },
           { to: '/sholat-zuhur', icon: Moon, label: 'Pantau Zuhur Siswa', color: 'text-slate-600', bg: 'bg-slate-50', desc: 'Absensi sholat zuhur' },

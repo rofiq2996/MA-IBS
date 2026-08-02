@@ -78,7 +78,7 @@ export function AdminTeachingAssignments() {
   const [mapel, setMapel] = useState(subjects[0]?.name || '');
   const [guru, setGuru] = useState('');
   
-  const teachers = users.filter(u => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru'));
+  const teachers = users.filter(u => u.role === 'guru' || u.role === 'guru_quran' || u.roles?.includes('guru') || u.roles?.includes('guru_quran'));
 
   const [filterRombel, setFilterRombel] = useState('');
   const [filterMapel, setFilterMapel] = useState('');

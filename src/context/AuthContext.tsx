@@ -33,9 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       apiClient(`/get_user.php?id=${user.id}`)
         .then(data => {
           if (data.status === 'success' && data.user) {
-            let parsedRoles = data.user.roles || [data.user.role];
-            if (typeof parsedRoles === 'string') {
-              try { parsedRoles = JSON.parse(parsedRoles); } catch(e) { parsedRoles = [data.user.role]; }
+            let parsedRoles = user.roles;
+            if (data.user.roles) {
+              if (typeof data.user.roles === 'string') {
+                try { parsedRoles = JSON.parse(data.user.roles); } catch(e) { parsedRoles = [data.user.role]; }
+              } else {
+                parsedRoles = data.user.roles;
+              }
+            }
+            if (!parsedRoles || parsedRoles.length === 0) {
+              parsedRoles = [data.user.role || user.role];
             }
             const updatedUser = { ...user, ...data.user, roles: parsedRoles };
             // Preserve the currently active role if the user still has it, or if it's a sub-role like walas/guru_quran

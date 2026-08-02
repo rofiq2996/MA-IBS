@@ -82,8 +82,6 @@ export function Sidebar() {
         { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
         { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
-        { to: '/jurnal-mengajar', icon: Book, label: 'Jurnal Mengajar' },
-        { to: '/analisis-siswa', icon: LineChart, label: 'Analisis Siswa' },
         { to: '/laporan', icon: FileText, label: 'Laporan' },
         { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi' },
         { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap' },

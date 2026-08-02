@@ -82,6 +82,7 @@ export function DashboardGuruQuran() {
 export function GuruQuranAbsensiDhuha() {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
+  const [isLocked, setIsLocked] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
   const [students, setStudents] = useState<any[]>([]);
   const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
@@ -105,7 +106,28 @@ export function GuruQuranAbsensiDhuha() {
     }
   }, [availableClasses, selectedClass]);
 
+  useEffect(() => {
+    if (selectedClass) {
+      const storageKey = `dhuha_${selectedClass}`;
+      const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      const today = new Date().toISOString().split('T')[0];
+      if (existingData[today]) {
+        setAttendance(existingData[today]);
+        setIsLocked(true);
+      } else {
+        const classStudents = students.filter(s => s.class_name === selectedClass || s.className === selectedClass);
+        const defaultAtt: Record<string, { status: string; ket: string }> = {};
+        classStudents.forEach(s => {
+          defaultAtt[s.id] = { status: 'Jamaah', ket: '' };
+        });
+        setAttendance(defaultAtt);
+        setIsLocked(false);
+      }
+    }
+  }, [selectedClass, students]);
+
   const handleSetStatus = (id: string, status: string) => {
+    if (isLocked) return;
     setAttendance(prev => ({ 
       ...prev, 
       [id]: { 
@@ -116,10 +138,21 @@ export function GuruQuranAbsensiDhuha() {
   };
   
   const handleSetKet = (id: string, ket: string) => {
+    if (isLocked) return;
     setAttendance(prev => ({ ...prev, [id]: { ...prev[id], ket } }));
   };
 
   const handleSave = () => {
+    if (!selectedClass) {
+      window.alert("Pilih kelas terlebih dahulu!");
+      return;
+    }
+    const storageKey = `dhuha_${selectedClass}`;
+    const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+    const today = new Date().toISOString().split('T')[0];
+    existingData[today] = attendance;
+    remoteStorage.setItem(storageKey, JSON.stringify(existingData));
+    setIsLocked(true);
     window.alert("Absensi Sholat Dhuha berhasil disimpan!");
   };
 
@@ -147,13 +180,23 @@ export function GuruQuranAbsensiDhuha() {
                 ]}
               />
             </div>
-            <button 
-              onClick={handleSave}
-              className="px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Simpan
-            </button>
+            {isLocked ? (
+              <button 
+                onClick={() => setIsLocked(false)}
+                className="w-full md:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+            ) : (
+              <button 
+                onClick={handleSave}
+                className="px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Simpan
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -196,7 +239,8 @@ export function GuruQuranAbsensiDhuha() {
                               <button
                                 key={st}
                                 onClick={() => handleSetStatus(s.id, st)}
-                                className={"w-8 h-8 flex items-center justify-center rounded-md border text-xs font-bold transition-colors " + (stat === st ? (bgActive + " " + textActive + " border-transparent shadow-sm") : (bgInactive + " " + textInactive + " " + hoverBg + " border-slate-200/60"))}
+                                disabled={isLocked}
+                                className={"w-8 h-8 flex items-center justify-center rounded-md border text-xs font-bold transition-colors " + (stat === st ? (bgActive + " " + textActive + " border-transparent shadow-sm") : (bgInactive + " " + textInactive + " " + hoverBg + " border-slate-200/60")) + (isLocked ? " opacity-50 cursor-not-allowed" : "")}
                               >
                                 {stLabel}
                               </button>
@@ -209,8 +253,9 @@ export function GuruQuranAbsensiDhuha() {
                           type="text"
                           placeholder="Tambahkan keterangan..."
                           value={ket}
+                          disabled={isLocked}
                           onChange={(e) => handleSetKet(s.id, e.target.value)}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-emerald-500 transition-colors"
+                          className={`w-full px-3 py-1.5 border border-slate-200 rounded-md text-sm outline-none focus:border-emerald-500 transition-colors ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
                         />
                       </td>
                     </tr>
