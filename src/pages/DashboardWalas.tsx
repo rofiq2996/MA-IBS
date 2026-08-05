@@ -19,11 +19,23 @@ export function DashboardWalas() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [students, setStudents] = useState<any[]>([]);
+  const [pemantauanRecords, setPemantauanRecords] = useState<any[]>([]);
+
   useEffect(() => {
     if (!user) return;
     const myClass = user.className || user.class_name;
-    apiClient('/crud.php?table=students').then(data => {
-      setStudents(data.filter((s:any) => s.class_name === myClass));
+    const today = new Date().toISOString().split('T')[0];
+
+    Promise.all([
+      apiClient('/crud.php?table=students'),
+      apiClient('/crud.php?table=pemantauan_pagi')
+    ]).then(([studentsData, pemantauanData]) => {
+      if (Array.isArray(studentsData)) {
+        setStudents(studentsData.filter((s:any) => s.class_name === myClass));
+      }
+      if (Array.isArray(pemantauanData)) {
+        setPemantauanRecords(pemantauanData.filter((r:any) => r.tanggal === today && String(r.class_name) === String(myClass)));
+      }
     }).catch(console.error);
   }, [user]);
   const [selectedDate] = useState(new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
@@ -31,7 +43,7 @@ export function DashboardWalas() {
   const menuItems = [
     { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
     { to: '/users', icon: Users, label: 'Akun Pengguna' },
-    { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
+    { to: '/jadwal-pelajaran-kelas', icon: Calendar, label: 'Jadwal Pelajaran' },
     { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
     { to: '/input-nilai', icon: Edit3, label: 'Input Nilai' },
     { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
@@ -161,34 +173,54 @@ export function DashboardWalas() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {students.slice(0, 5).map((student, idx) => (
-                  <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-3 font-bold text-slate-800">
-                      {student.name}
-                      <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">NIS: {student.nis}</span>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${idx % 2 === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {idx % 2 === 0 ? 'Piket' : 'Tidak Piket'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${idx !== 2 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {idx !== 2 ? 'Lengkap' : 'Tidak Lengkap'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-left text-xs text-slate-500 font-medium">
-                      {idx === 2 ? 'Tidak pakai dasi' : '-'}
-                    </td>
+                {students.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-8 text-center text-slate-500 italic">Belum ada data siswa</td>
                   </tr>
-                ))}
+                ) : (
+                  students.slice(0, 5).map((student) => {
+                    const record = pemantauanRecords.find(r => String(r.student_id) === String(student.id));
+                    const isPiket = record?.kebersihan === 'Piket';
+                    const isLengkap = record?.seragam === 'Lengkap';
+                    
+                    return (
+                      <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-5 py-3 font-bold text-slate-800">
+                          {student.name}
+                          <span className="block text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">NIS: {student.nis}</span>
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          {record ? (
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${isPiket ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                              {record.kebersihan}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          {record ? (
+                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${isLengkap ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {record.seragam}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-left text-xs text-slate-500 font-medium">
+                          {record?.ket_seragam || '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
           <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl">
              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-slate-600">
-                   <span className="font-bold text-slate-800">Motivasi Hari Ini:</span> "Menjaga kebersihan sebagian dari iman..."
+                   <span className="font-bold text-slate-800">Motivasi Hari Ini:</span> "{pemantauanRecords.length > 0 && pemantauanRecords[0].motivasi_pagi ? pemantauanRecords[0].motivasi_pagi : 'Belum ada motivasi yang diberikan.'}"
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/pemantauan')} className="w-full sm:w-auto text-xs">
                    Lihat Semua

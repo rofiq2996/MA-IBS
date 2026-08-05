@@ -3,6 +3,8 @@ import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Edit2, Trash2, Plus, X, Check } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
 
 export function BKPreventif() {
   const [agendas, setAgendas] = useState(() => {
@@ -1074,6 +1076,91 @@ export function BKAdvokasi() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+export function BKAdministrasi() {
+  const [activity, setActivity] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { user } = useAuth();
+
+  const handleSave = async () => {
+    if (!activity) {
+      window.alert("Mohon isi laporan aktivitas harian.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      
+      await apiClient("/crud.php?table=laporan_harian", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: user?.id,
+          role: "bk",
+          date: today,
+          activity: activity
+        })
+      });
+      window.alert("Laporan harian BK berhasil disimpan ke database!");
+      setActivity("");
+    } catch (err) {
+      console.error(err);
+      window.alert("Gagal menyimpan laporan.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const currentHour = new Date().getHours();
+  const isLate = currentHour >= 17;
+
+  if (isLate) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold tracking-tight text-slate-800">Administrasi BK Harian</h1>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-8 text-center">
+            <h2 className="text-lg font-bold text-red-700 mb-2">Batas Waktu Pengisian Terlewat</h2>
+            <p className="text-red-600">
+              Anda tidak dapat mengisi laporan administrasi harian karena telah melewati pukul 17.00. 
+              Kejadian ini telah dicatat sebagai pelanggaran disiplin.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-bold tracking-tight text-slate-800">Administrasi Harian BK</h1>
+      
+      <Card>
+        <CardHeader><CardTitle>Laporan Aktivitas Harian</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-sm font-bold text-slate-700">Aktivitas Hari Ini</label>
+            <textarea 
+              value={activity}
+              onChange={(e) => setActivity(e.target.value)}
+              placeholder="Contoh: Melakukan konseling individu dengan 3 siswa kelas X-IPA terkait minat bakat."
+              rows={5}
+              className="w-full p-3 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <button 
+            onClick={handleSave} 
+            disabled={isSubmitting}
+            className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors shadow-sm"
+          >
+            {isSubmitting ? "MENYIMPAN..." : "SIMPAN LAPORAN HARIAN"}
+          </button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

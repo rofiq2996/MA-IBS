@@ -3,16 +3,21 @@ import { remoteStorage } from '../lib/remoteStorage';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Plus, Edit2, Trash2, Check, X, FileText, AlertTriangle, Users, Calendar, MapPin, Search, Filter, Award, Activity, Sparkles, UserCheck, Shield } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { mockStudents as globalStudents } from '../data/mock';
+import { apiClient } from '../lib/apiClient';
 
 export function KesiswaanPrestasiPelanggaran() {
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
 
-  const mockStudents = globalStudents.map(s => ({
-    id: s.id,
-    name: s.name,
-    kelas: s.className || s.grade
-  }));
+  const [mockStudents, setStudents] = useState<any[]>([]);
+  useEffect(() => {
+    apiClient('/crud.php?table=students').then(res => {
+      setStudents((res || []).map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        kelas: s.class_name || s.kelas || '-'
+      })));
+    }).catch(console.error);
+  }, []);
 
   // Pelanggaran / SP State
   const [pelanggaran, setPelanggaran] = useState<any[]>(() => {

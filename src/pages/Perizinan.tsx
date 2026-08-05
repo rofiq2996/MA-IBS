@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, Clock, CheckCircle, XCircle, Clock4, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, Clock4, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { requestNotificationPermission, sendLocalNotification } from '../lib/notification';
 import { apiClient } from '../lib/apiClient';
+import { motion, AnimatePresence } from 'motion/react';
 
 export function Perizinan() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export function Perizinan() {
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchRequests = () => {
     setLoading(true);
@@ -65,14 +67,18 @@ export function Perizinan() {
     setReason(req.reason);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Batalkan pengajuan ini?')) {
-      apiClient(`/crud.php?table=leave_requests&id=${id}`, { method: 'DELETE' })
-        .then(() => {
-           setRequests(requests.filter(r => String(r.id) !== String(id)));
-        })
-        .catch(console.error);
-    }
+  const handleDeleteClick = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deletingId) return;
+    apiClient(`/crud.php?table=leave_requests&id=${deletingId}`, { method: 'DELETE' })
+      .then(() => {
+         setRequests(requests.filter(r => String(r.id) !== String(deletingId)));
+         setDeletingId(null);
+      })
+      .catch(console.error);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -216,7 +222,7 @@ export function Perizinan() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                     )}
-                    <button onClick={() => handleDelete(req.id)} className="text-red-600 hover:text-red-700" title="Batalkan/Hapus">
+                    <button onClick={() => handleDeleteClick(req.id)} className="text-red-600 hover:text-red-700" title="Batalkan/Hapus">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -230,6 +236,53 @@ export function Perizinan() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingId(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 z-10"
+            >
+              <div className="p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4 text-red-600">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-2">Batalkan Pengajuan?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Apakah Anda yakin ingin membatalkan dan menghapus pengajuan izin ini? Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+              <div className="flex border-t border-slate-100 bg-slate-50 p-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white cursor-pointer"
+                >
+                  BATAL
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm cursor-pointer"
+                >
+                  YA, BATALKAN
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

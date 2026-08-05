@@ -14,7 +14,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 
-export function MobileNav() {
+export function MobileNav({ unreadNotifCount = 0 }: { unreadNotifCount?: number }) {
   const { user } = useAuth();
   
   const getRoleSpecificLink = () => {
@@ -25,7 +25,7 @@ export function MobileNav() {
       case 'guru_quran':
         return { to: '/absensi', icon: CheckSquare, label: 'Absen' };
       case 'walas':
-        return { to: '/pemantauan', icon: Users, label: 'Siswa' };
+        return { to: '/absensi', icon: CheckSquare, label: 'Absen' };
       case 'siswa':
         return { to: '/lms-tugas', icon: ClipboardList, label: 'Tugas' };
       case 'wakakurikulum':
@@ -63,14 +63,21 @@ export function MobileNav() {
             to={link.to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center w-16 h-full space-y-1 text-[10px] font-bold uppercase tracking-wider transition-all",
+                "relative flex flex-col items-center justify-center w-16 h-full space-y-1 text-[10px] font-bold uppercase tracking-wider transition-all",
                 isActive 
                   ? "text-emerald-600 scale-105" 
                   : "text-slate-400 hover:text-slate-600 active:scale-95"
               )
             }
           >
-            <link.icon className="w-5 h-5 mb-0.5" />
+            <div className="relative">
+              <link.icon className="w-5 h-5 mb-0.5" />
+              {link.to === '/notifications' && unreadNotifCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center border border-white">
+                  {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                </span>
+              )}
+            </div>
             <span>{link.label}</span>
           </NavLink>
         ))}

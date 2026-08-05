@@ -24,6 +24,20 @@ export function AppLayout() {
   const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.id) {
+      apiClient(`/notifications.php?user_id=${user.id}`)
+        .then(data => {
+          if (Array.isArray(data)) {
+            const count = data.filter(n => !n.is_read).length;
+            setUnreadNotifCount(count);
+          }
+        })
+        .catch(err => console.error('Failed to fetch notifications', err));
+    }
+  }, [user?.id, location.pathname]);
   
   const [terms, setTerms] = useState<any[]>([]);
   const [selectedTermId, setSelectedTermId] = useState<string>('');
@@ -125,7 +139,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans">
-      <Sidebar />
+      <Sidebar unreadNotifCount={unreadNotifCount} />
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
           <div className="flex items-center space-x-3 sm:space-x-4">
@@ -267,7 +281,11 @@ export function AppLayout() {
               )}
               <button onClick={() => navigate('/notifications')} className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 cursor-pointer text-slate-600 transition-colors">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                {unreadNotifCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 rounded-full border border-white text-[9px] font-bold text-white px-1">
+                    {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                  </span>
+                )}
               </button>
               
               <button 
@@ -284,7 +302,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <MobileNav />
+      <MobileNav unreadNotifCount={unreadNotifCount} />
 
       {/* Exit Confirmation Dialog Modal */}
       <AnimatePresence>

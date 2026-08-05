@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { FileText, Share2, Plus, Edit3, Trash2, List, PlayCircle, CheckCircle, Clock } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useAuth } from '../context/AuthContext';
-import { mockStudents, mockClasses } from '../data/mock';
+import { apiClient } from '../lib/apiClient';
 
 interface Question {
   id: string;
@@ -37,9 +37,20 @@ export function CBT() {
   const isSiswa = user?.role === 'siswa';
   const isTeacherOrWalas = user?.role === 'guru' || user?.role === 'walas';
 
-  const [classes] = useState(mockClasses);
+  const [classes, setClasses] = useState<any[]>([]);
 
-  const studentData = isSiswa ? mockStudents.find(s => s.nis === user?.username) : null;
+  const [studentData, setStudentData] = useState<any>(null);
+  
+  useEffect(() => {
+    Promise.all([
+      apiClient('/crud.php?table=classes').then(res => setClasses(res || [])).catch(() => {}),
+      isSiswa ? apiClient('/crud.php?table=students').then(res => {
+        const student = (res || []).find((s: any) => s.nis === user?.username);
+        if (student) setStudentData(student);
+      }).catch(() => {}) : Promise.resolve()
+    ]);
+  }, [isSiswa, user]);
+
   const studentClass = studentData?.className || '';
 
   // Get available classes and subjects for teacher

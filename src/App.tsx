@@ -28,9 +28,9 @@ import { useAuth } from './context/AuthContext';
 
 // Import New Pages
 import { DataSiswa, JadwalMengajar, Absensi, InputNilai, JurnalMengajar, PerangkatNgajar, AnalisisSiswa, Laporan, AbsensiZuhur } from './pages/GuruPages';
-import { PemantauanPagi, NilaiSikap, SholatZuhurWalas, PrestasiWalas, BkWalas } from './pages/WalasPages';
+import { PemantauanPagi, NilaiSikap, SholatZuhurWalas, PrestasiWalas, BkWalas, JadwalPelajaranWalas } from './pages/WalasPages';
 import { DataAnak, AbsensiAnak, NilaiAnak, PesanWaliKelas, SikapAnak } from './pages/OrtuPages';
-import { BKPreventif, BKPengembangan, BKKuratif, BKPenyaluran, BKAdvokasi } from './pages/BKPages';
+import { BKPreventif, BKPengembangan, BKKuratif, BKPenyaluran, BKAdvokasi, BKAdministrasi } from './pages/BKPages';
 import { LMSTugas } from './pages/LMSTugas';
 
 import { SiswaHafalan } from './pages/SiswaHafalan';
@@ -174,6 +174,7 @@ export default function App() {
             {/* Guru Routes */}
             <Route path="data-siswa" element={<DataSiswa />} />
             <Route path="jadwal-mengajar" element={<JadwalMengajar />} />
+            <Route path="jadwal-pelajaran-kelas" element={<JadwalPelajaranWalas />} />
             <Route path="absensi" element={<Absensi />} />
             <Route path="input-nilai" element={<InputNilai />} />
             <Route path="jurnal-mengajar" element={<JurnalMengajar />} />
@@ -217,6 +218,7 @@ export default function App() {
             <Route path="kuratif" element={<BKKuratif />} />
             <Route path="penyaluran" element={<BKPenyaluran />} />
             <Route path="advokasi" element={<BKAdvokasi />} />
+            <Route path="administrasi-bk" element={<BKAdministrasi />} />
             
             {/* Pustaka Routes */}
             <Route path="administrasi" element={<PustakaAdministrasi />} />

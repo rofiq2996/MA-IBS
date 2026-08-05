@@ -1,23 +1,53 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Edit2, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/apiClient';
 
 export function PustakaAdministrasi() {
   const [visitorCount, setVisitorCount] = useState('');
   const [borrowCount, setBorrowCount] = useState('');
   const [returnCount, setReturnCount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  
   const [tasks, setTasks] = useState({
     kebersihan: false,
     matikanAc: false,
     kunciPintu: false
   });
 
-  const handleSave = () => {
-    window.alert("Laporan harian perpustakaan berhasil disimpan!");
-    setVisitorCount('');
-    setBorrowCount('');
-    setReturnCount('');
-    setTasks({ kebersihan: false, matikanAc: false, kunciPintu: false });
+  const handleSave = async () => {
+    if (!visitorCount || !borrowCount || !returnCount) {
+      window.alert('Mohon lengkapi semua jumlah statistik.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const activityStr = `Pengunjung: ${visitorCount}, Dipinjam: ${borrowCount}, Dikembalikan: ${returnCount}. Tugas penutupan: ${tasks.kebersihan ? 'Selesai' : 'Belum'}, AC: ${tasks.matikanAc ? 'Selesai' : 'Belum'}, Kunci: ${tasks.kunciPintu ? 'Selesai' : 'Belum'}.`;
+      
+      await apiClient('/crud.php?table=laporan_harian', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: user?.id,
+          role: 'pustakawan',
+          date: today,
+          activity: activityStr
+        })
+      });
+      window.alert("Laporan harian perpustakaan berhasil disimpan ke database!");
+      setVisitorCount('');
+      setBorrowCount('');
+      setReturnCount('');
+      setTasks({ kebersihan: false, matikanAc: false, kunciPintu: false });
+    } catch (err) {
+      console.error(err);
+      window.alert("Gagal menyimpan laporan.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currentHour = new Date().getHours();
@@ -115,8 +145,12 @@ export function PustakaAdministrasi() {
             </label>
           </div>
           
-          <button onClick={handleSave} className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors shadow-sm">
-            SIMPAN LAPORAN HARIAN
+          <button 
+            onClick={handleSave} 
+            disabled={isSubmitting}
+            className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors shadow-sm"
+          >
+            {isSubmitting ? 'MENYIMPAN...' : 'SIMPAN LAPORAN HARIAN'}
           </button>
         </CardContent>
       </Card>

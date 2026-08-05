@@ -6,7 +6,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $table = isset($_GET['table']) ? $_GET['table'] : '';
 $id = isset($_GET['id']) ? $_GET['id'] : '';
 
-$allowedTables = ['academic_history', 'academic_terms', 'agenda', 'announcements', 'bk_cases', 'cbt_exams', 'cbt_questions', 'cbt_submissions', 'classes', 'grades', 'kinerja_staf', 'leave_requests', 'materi_ajar', 'materi_objectives', 'notifications', 'sarpras', 'schedules', 'student_attendance', 'students', 'subjects', 'teacher_attendance', 'teaching_assignments', 'users'];
+$allowedTables = ['academic_history', 'academic_terms', 'agenda', 'announcements', 'bk_cases', 'cbt_exams', 'cbt_questions', 'cbt_submissions', 'classes', 'grades', 'kinerja_staf', 'leave_requests', 'materi_ajar', 'materi_objectives', 'notifications', 'sarpras', 'schedules', 'student_attendance', 'students', 'pemantauan_pagi', 'subjects', 'teacher_attendance', 'teaching_assignments', 'users'];
 
 if (!in_array($table, $allowedTables)) {
     http_response_code(403);

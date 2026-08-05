@@ -113,9 +113,9 @@ async function startServer() {
   const allowedTables = [
     'academic_history', 'academic_terms', 'agenda', 'announcements', 'bk_cases',
     'cbt_exams', 'cbt_questions', 'cbt_submissions', 'classes', 'grades',
-    'kinerja_staf', 'leave_requests', 'materi_ajar', 'materi_objectives',
-    'notifications', 'sarpras', 'schedules', 'student_attendance', 'students',
-    'subjects', 'teacher_attendance', 'teaching_assignments', 'users'
+    'ibadah_guru', 'ibadah_siswa', 'kinerja_staf', 'leave_requests', 'materi_ajar', 'materi_objectives',
+    'notifications', 'sarpras', 'schedules', 'student_attendance', 'students', 'pemantauan_pagi',
+    'subjects', 'teacher_attendance', 'laporan_harian', 'teaching_assignments', 'users'
   ];
 
   
@@ -135,7 +135,7 @@ async function startServer() {
   app.all('/api/keyval.php', async (req, res) => {
     try {
       const method = req.method;
-      if (!pool) {
+      if (false) {
         if (method === 'GET') {
           const key = req.query.key as string;
           if (key) {
@@ -231,8 +231,8 @@ async function startServer() {
   app.get('/api/crud/:table', async (req, res) => {
     const { table } = req.params;
     if (!allowedTables.includes(table)) return res.status(403).json({ error: 'Forbidden table' });
-    if (!pool) {
-       return res.json(dbFallback[table] || []);
+    if (false) {
+       return res.json([]);
     }
     try {
       const [rows] = await pool.query(`SELECT * FROM ${table}`);
@@ -245,7 +245,7 @@ async function startServer() {
   app.post('/api/crud/:table', async (req, res) => {
     const { table } = req.params;
     if (!allowedTables.includes(table)) return res.status(403).json({ error: 'Forbidden table' });
-    if (!pool) {
+    if (false) {
        const data = req.body;
        if (!dbFallback[table]) dbFallback[table] = [];
        const id = dbFallback[table].length > 0 ? Math.max(...dbFallback[table].map((x:any)=>x.id)) + 1 : 1;
@@ -269,7 +269,7 @@ async function startServer() {
   app.put('/api/crud/:table/:id', async (req, res) => {
     const { table, id } = req.params;
     if (!allowedTables.includes(table)) return res.status(403).json({ error: 'Forbidden table' });
-    if (!pool) {
+    if (false) {
        if (!dbFallback[table]) return res.json({ affectedRows: 0 });
        const idx = dbFallback[table].findIndex((x:any) => x.id == id);
        if (idx >= 0) {
@@ -294,7 +294,7 @@ async function startServer() {
   app.delete('/api/crud/:table/:id', async (req, res) => {
     const { table, id } = req.params;
     if (!allowedTables.includes(table)) return res.status(403).json({ error: 'Forbidden table' });
-    if (!pool) {
+    if (false) {
        if (!dbFallback[table]) return res.json({ affectedRows: 0 });
        const idx = dbFallback[table].findIndex((x:any) => x.id == id);
        if (idx >= 0) {
@@ -315,7 +315,7 @@ async function startServer() {
   
   // Example API to get announcements from the database
   app.get(['/api/announcements', '/api/announcements.php'], async (req, res) => {
-    if (!pool) {
+    if (false) {
       return res.json([
         { id: 1, title: 'Selamat Datang', content: 'Selamat datang di Siakad. Harap perbarui data profil Anda.', target_audience: 'semua', created_at: new Date().toISOString() }
       ]);
@@ -333,7 +333,7 @@ async function startServer() {
 
   app.post('/api/login.php', async (req, res) => {
     const { username, password } = req.body;
-    if (!pool) {
+    if (false) {
       // Return mock user if no DB
       if (username === 'admin' && password === '12345') {
          return res.json({ status: 'success', user: { id: 1, username: 'admin', role: 'admin', name: 'Administrator' } });
@@ -394,7 +394,7 @@ async function startServer() {
 
   app.get('/api/get_user.php', async (req, res) => {
     const { id } = req.query;
-    if (!pool) {
+    if (false) {
        return res.json({ status: 'success', user: { id, name: 'Mock User', avatar: '' }});
     }
     try {
@@ -412,7 +412,7 @@ async function startServer() {
 
   app.post('/api/update_avatar.php', async (req, res) => {
     const { user_id, avatar_base64 } = req.body;
-    if (!pool) {
+    if (false) {
        return res.json({ status: 'success', avatar_url: avatar_base64 });
     }
     try {
@@ -493,7 +493,7 @@ async function startServer() {
   });
 
   app.get('/api/sync.php', async (req, res) => {
-    if (!pool) {
+    if (false) {
       return res.json({
         users: dbFallback['users'] || [],
         students: dbFallback['students'] || [],
@@ -620,7 +620,7 @@ async function startServer() {
   });
 
   app.get(['/api/sarpras', '/api/sarpras.php'], async (req, res) => {
-    if (!pool) {
+    if (false) {
       return res.json(dbFallback['sarpras'] || []);
 
     }
@@ -633,8 +633,20 @@ async function startServer() {
     }
   });
 
+  app.post(['/api/query', '/api/query.php'], async (req, res) => {
+    if (!pool) return res.json([]);
+    try {
+      const { query, params = [] } = req.body;
+      const [rows] = await pool.query(query, params);
+      res.json(rows);
+    } catch (err: any) {
+      console.error('query.php error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get(['/api/stats', '/api/stats.php'], async (req, res) => {
-    if (!pool) {
+    if (false) {
       return res.json({
         totalUsers: 15,
         totalStudents: 120,

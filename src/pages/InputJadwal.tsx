@@ -228,7 +228,35 @@ export function InputJadwal() {
       return;
     }
     
-    const guruData = teachers.find(t => t.id === guru);
+    // Conflict validation
+    const hasConflict = schedules.find(s => {
+      // Skip the schedule we are currently editing
+      if (editingId && String(s.id) === String(editingId)) return false;
+      
+      // Only check same day
+      if (s.hari !== hari) return false;
+      
+      // Check time overlap
+      const overlap = jamMulai < s.jamSelesai && s.jamMulai < jamSelesai;
+      
+      if (overlap) {
+        if (s.rombel === rombel) return true; // Class is already busy
+        if (s.guruId === guru) return true; // Teacher is already busy
+      }
+      return false;
+    });
+
+    if (hasConflict) {
+      if (hasConflict.rombel === rombel) {
+        window.alert(`Jadwal bentrok! Kelas ${rombel} sudah ada jadwal ${hasConflict.mapel} pada jam tersebut.`);
+      } else {
+        const teacherName = teachers.find(t => String(t.id) === String(guru))?.name || 'Guru tersebut';
+        window.alert(`Jadwal bentrok! ${teacherName} sudah mengajar di kelas ${hasConflict.rombel} pada jam tersebut.`);
+      }
+      return;
+    }
+
+    const guruData = teachers.find(t => String(t.id) === String(guru));
     
     const payload = {
       class_name: rombel,

@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Heart, FileBarChart, Check, GraduationCap, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../lib/apiClient';
+import { apiClient, logKinerja } from '../lib/apiClient';
+import { remoteStorage } from "../lib/remoteStorage";
 import { Button } from '../components/ui/Button';
 import { mockStudents as globalStudents } from '../data/mock';
 import { TermSwitcher } from '../components/ui/TermSwitcher';
@@ -142,7 +143,7 @@ export function GuruQuranAbsensiDhuha() {
     setAttendance(prev => ({ ...prev, [id]: { ...prev[id], ket } }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedClass) {
       window.alert("Pilih kelas terlebih dahulu!");
       return;
@@ -153,6 +154,9 @@ export function GuruQuranAbsensiDhuha() {
     existingData[today] = attendance;
     remoteStorage.setItem(storageKey, JSON.stringify(existingData));
     setIsLocked(true);
+    if (user?.id) {
+      await logKinerja(user.id, 'Mengabsen siswa sholat Dhuha');
+    }
     window.alert("Absensi Sholat Dhuha berhasil disimpan!");
   };
 

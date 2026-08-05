@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -6,11 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { 
   FileBarChart2, Users, GraduationCap, Calendar, Download, TrendingUp, Award, Clock, ArrowUpRight, BarChart3, PieChart, Info, Eye, X
 } from 'lucide-react';
-import { mockClasses, mockStudents, mockUsers } from '../data/mock';
+import { apiClient } from '../lib/apiClient';
 import { CustomSelect } from '../components/ui/CustomSelect';
 
 export function AdminReports() {
-  const [classes] = useState(mockClasses);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  
+  useEffect(() => {
+    Promise.all([
+      apiClient('/crud.php?table=classes'),
+      apiClient('/crud.php?table=students'),
+      apiClient('/crud.php?table=users')
+    ]).then(([cRes, sRes, uRes]) => {
+      setClasses(cRes || []);
+      setStudents(sRes || []);
+      setUsers(uRes || []);
+    }).catch(console.error);
+  }, []);
 
   const [selectedReportType, setSelectedReportType] = useState<string>('absensi_siswa');
   const [selectedSemester, setSelectedSemester] = useState<string>('Ganjil 2026/2027');
@@ -34,8 +48,8 @@ export function AdminReports() {
     let rows: any[][] = [];
     
     // Fallbacks to actual local storage data if mock is empty initially
-    let currentStudents = mockStudents;
-    let currentUsers = mockUsers;
+    let currentStudents = students;
+    let currentUsers = users;
     
 
     switch (selectedReportType) {
@@ -162,19 +176,19 @@ export function AdminReports() {
   };
 
   // Dynamic calculations
-  const totalStudents = mockStudents.length;
+  const totalStudents = students.length;
   
   // Pesantren terminology: Putra (L) and Putri (P)
-  const countPutra = mockStudents.filter(s => s.gender === 'L').length;
-  const countPutri = mockStudents.filter(s => s.gender === 'P').length;
+  const countPutra = students.filter(s => s.gender === 'L').length;
+  const countPutri = students.filter(s => s.gender === 'P').length;
   
   const pctPutra = totalStudents > 0 ? Math.round((countPutra / totalStudents) * 100) : 0;
   const pctPutri = totalStudents > 0 ? Math.round((countPutri / totalStudents) * 100) : 0;
 
-  const totalTeachers = mockUsers.filter(u => ['guru', 'guru_quran', 'walas'].includes(u.role)).length;
+  const totalTeachers = users.filter(u => ['guru', 'guru_quran', 'walas'].includes(u.role)).length;
 
   const classStats = classes.map(c => {
-    const studentsInClass = mockStudents.filter(s => s.className === c.name);
+    const studentsInClass = students.filter(s => s.className === c.name);
     const count = studentsInClass.length;
     
     // Average attendance for class

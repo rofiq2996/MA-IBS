@@ -5,7 +5,7 @@ import { UserAnnouncements } from '../components/ui/UserAnnouncements';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { Shield, TrendingUp, Stethoscope, Map, Scale, Users, Search, GraduationCap, Calendar } from 'lucide-react';
+import { Shield, TrendingUp, Stethoscope, Map, Scale, Users, Search, GraduationCap, Calendar, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -19,6 +19,7 @@ export function DashboardBK() {
     { to: '/kuratif', icon: Stethoscope, label: 'Fungsi Kuratif', color: 'text-amber-600', bg: 'bg-amber-50' },
     { to: '/penyaluran', icon: Map, label: 'Fungsi Penyaluran', color: 'text-purple-600', bg: 'bg-purple-50' },
     { to: '/advokasi', icon: Scale, label: 'Fungsi Advokasi', color: 'text-red-600', bg: 'bg-red-50' },
+    { to: '/administrasi-bk', icon: Clipboard, label: 'Laporan Harian', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   ];
 
   const todayDate = new Date().toLocaleDateString('id-ID', {

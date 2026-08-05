@@ -20,9 +20,11 @@ export function DashboardGuru() {
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchSchedules = async () => {
+    const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const data = await apiClient('/crud.php?table=schedules');
@@ -42,13 +44,64 @@ export function DashboardGuru() {
           mapped.sort((a, b) => a.time.localeCompare(b.time));
           setSchedules(mapped);
         }
+
+        const assignmentsData = await apiClient('/crud.php?table=teaching_assignments');
+        let myClasses: string[] = [];
+        if (Array.isArray(assignmentsData)) {
+           myClasses = Array.from(new Set(assignmentsData.filter(a => String(a.teacher_id) === String(user?.id)).map(a => a.class_name)));
+           setTeacherClasses(myClasses);
+        }
+
+        const gradesResponse = await apiClient('/crud.php?table=grades');
+        if (Array.isArray(gradesResponse)) {
+            const weeks: any[] = [
+               { name: 'Mg 1' },
+               { name: 'Mg 2' },
+               { name: 'Mg 3' },
+               { name: 'Mg 4' }
+            ];
+            
+            weeks.forEach(w => {
+               myClasses.forEach(c => {
+                  w[`${c}_sum`] = 0;
+                  w[`${c}_count`] = 0;
+               });
+            });
+
+            gradesResponse.forEach((g: any) => {
+               if (myClasses.includes(g.class_name)) {
+                  const date = new Date(g.created_at || Date.now());
+                  const day = date.getDate();
+                  const weekIndex = Math.min(Math.floor((day - 1) / 7), 3);
+                  
+                  const w = weeks[weekIndex];
+                  w[`${g.class_name}_sum`] += parseFloat(g.score) || 0;
+                  w[`${g.class_name}_count`] += 1;
+               }
+            });
+
+            weeks.forEach(w => {
+               myClasses.forEach(c => {
+                  if (w[`${c}_count`] > 0) {
+                     w[c] = Math.round(w[`${c}_sum`] / w[`${c}_count`]);
+                  } else {
+                     w[c] = 0;
+                  }
+                  delete w[`${c}_sum`];
+                  delete w[`${c}_count`];
+               });
+            });
+
+            setChartData(weeks);
+        }
       } catch (err) {
-        console.error('Failed to fetch schedules', err);
+        console.error('Failed to fetch dashboard data', err);
       } finally {
         setLoading(false);
       }
     };
-    if (user?.id) fetchSchedules();
+
+    if (user?.id) fetchDashboardData();
   }, [user]);
 
   const menuItems = [
@@ -230,15 +283,21 @@ export function DashboardGuru() {
           </CardHeader>
           <CardContent className="h-64 w-full pt-4">
             <ResponsiveContainer width="100%" height={256}>
-              <LineChart data={[
-                { name: 'Mg 1', 'X-IPA 1': 78, 'XI-IPA 3': 82, 'XII-IPS 2': 75 },
-                { name: 'Mg 2', 'X-IPA 1': 80, 'XI-IPA 3': 85, 'XII-IPS 2': 78 },
-                { name: 'Mg 3', 'X-IPA 1': 82, 'XI-IPA 3': 84, 'XII-IPS 2': 81 },
-                { name: 'Mg 4', 'X-IPA 1': 85, 'XI-IPA 3': 88, 'XII-IPS 2': 83 },
+              <LineChart data={chartData.length > 0 ? chartData : [
+                { name: 'Mg 1' },
+                { name: 'Mg 2' },
+                { name: 'Mg 3' },
+                { name: 'Mg 4' },
               ]} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
-                <Line type="monotone" dataKey="X-IPA 1" stroke="#10b981" strokeWidth={2} />
-                <Line type="monotone" dataKey="XI-IPA 3" stroke="#6366f1" strokeWidth={2} />
-                <Line type="monotone" dataKey="XII-IPS 2" stroke="#f59e0b" strokeWidth={2} />
+                {teacherClasses.map((className, index) => {
+                  const colors = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6'];
+                  return (
+                    <Line key={className} type="monotone" dataKey={className} stroke={colors[index % colors.length]} strokeWidth={2} />
+                  );
+                })}
+                {teacherClasses.length === 0 && (
+                  <Line type="monotone" dataKey="dummy" stroke="#cbd5e1" strokeWidth={2} />
+                )}
                 <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />

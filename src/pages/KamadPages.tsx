@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/apiClient';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/Button';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { jsPDF } from 'jspdf';
@@ -93,7 +94,7 @@ export function DashboardKamad() {
           totalStudents: studentsList.length || 382,
           totalClasses: classesList.length || 12,
           pendingLeaves: mappedLeaves.length,
-          completedMateri: materiData.filter((m: any) => m.status === 'Sudah Membuat').length || 28
+          completedMateri: materiData.filter((m: any) => m.status === 'Terbit' || m.status === 'Sudah Membuat').length || 28
         });
 
         setPendingRequests(mappedLeaves);
@@ -499,13 +500,13 @@ export function KamadMateriAjar() {
         const mapped = res.data.map((m: any) => ({
           id: m.id,
           teacherName: m.name,
-          role: m.role === 'walas' ? 'Wali Kelas' : 'Guru Mapel',
-          category: m.category,
+          role: (m.subject.toLowerCase().includes('quran') || m.subject.toLowerCase().includes('tahfizh')) ? 'Guru Al-Qur\'an' : 'Guru Mapel',
+          category: (m.subject.toLowerCase().includes('quran') || m.subject.toLowerCase().includes('tahfizh')) ? 'guru_quran' : 'guru_mapel',
           subject: m.subject,
           className: m.class,
           title: m.title,
           date: m.date,
-          status: m.status,
+          status: (m.status === 'Terbit' || m.status === 'Sudah Membuat') ? 'Sudah Membuat' : 'Belum Membuat',
           driveUrl: m.file_name,
           description: m.description,
           objectives: m.objectives || []
@@ -538,7 +539,6 @@ export function KamadMateriAjar() {
   const filterOptions = [
     { value: 'all', label: 'Semua Kategori' },
     { value: 'guru_mapel', label: 'Guru Mapel' },
-    { value: 'wali_kelas', label: 'Wali Kelas' },
     { value: 'guru_quran', label: 'Guru Qur\'an' },
   ];
 
@@ -885,17 +885,74 @@ export function KamadMateriAjar() {
 }
 
 export function KamadIbadahSiswa() {
-  const classDhuhaRank = [
-    { className: 'X-IPA 1', absent: 5, total: 32 },
-    { className: 'XI-IPA 1', absent: 3, total: 34 },
-    { className: 'X-IPS 1', absent: 1, total: 30 },
-  ];
+  const [classDhuhaRank, setClassDhuhaRank] = useState<any[]>([]);
+  const [classZuhurRank, setClassZuhurRank] = useState<any[]>([]);
+  const [dhuhaRate, setDhuhaRate] = useState<number>(0);
+  const [zuhurRate, setZuhurRate] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
-  const classZuhurRank = [
-    { className: 'X-IPS 1', absent: 6, total: 30 },
-    { className: 'X-IPA 1', absent: 4, total: 32 },
-    { className: 'XI-IPA 1', absent: 2, total: 34 },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [ibadah, students] = await Promise.all([
+          apiClient('/crud.php?table=ibadah_siswa').catch(() => []),
+          apiClient('/crud.php?table=students').catch(() => [])
+        ]);
+
+        const ibadahList = Array.isArray(ibadah) ? ibadah : [];
+        const studentList = Array.isArray(students) ? students : [];
+
+        // Total students
+        const totalStudents = studentList.length || 1; // avoid division by zero
+
+        // Today's date (Y-M-D local time string roughly)
+        const today = new Date().toISOString().split('T')[0];
+
+        const todayIbadah = ibadahList.filter(i => String(i.date).startsWith(today));
+
+        const dhuhaIbadah = todayIbadah.filter(i => i.type === 'Dhuha');
+        const zuhurIbadah = todayIbadah.filter(i => i.type === 'Zuhur');
+
+        // Rates (assuming totalStudents are expected to do dhuha & zuhur)
+        const dhuhaPresent = dhuhaIbadah.filter(i => i.status === 'Hadir').length;
+        const zuhurPresent = zuhurIbadah.filter(i => i.status === 'Hadir').length;
+
+        setDhuhaRate(Math.round((dhuhaPresent / totalStudents) * 100));
+        setZuhurRate(Math.round((zuhurPresent / totalStudents) * 100));
+
+        // Group absent by class
+        const dhuhaAbsentByClass: Record<string, number> = {};
+        const zuhurAbsentByClass: Record<string, number> = {};
+
+        dhuhaIbadah.filter(i => i.status === 'Tidak Hadir').forEach(i => {
+          dhuhaAbsentByClass[i.class_name] = (dhuhaAbsentByClass[i.class_name] || 0) + 1;
+        });
+
+        zuhurIbadah.filter(i => i.status === 'Tidak Hadir').forEach(i => {
+          zuhurAbsentByClass[i.class_name] = (zuhurAbsentByClass[i.class_name] || 0) + 1;
+        });
+
+        const dRank = Object.keys(dhuhaAbsentByClass).map(c => ({
+          className: c,
+          absent: dhuhaAbsentByClass[c]
+        })).sort((a, b) => b.absent - a.absent).slice(0, 3);
+
+        const zRank = Object.keys(zuhurAbsentByClass).map(c => ({
+          className: c,
+          absent: zuhurAbsentByClass[c]
+        })).sort((a, b) => b.absent - a.absent).slice(0, 3);
+
+        setClassDhuhaRank(dRank);
+        setClassZuhurRank(zRank);
+      } catch (err) {
+        console.error('Failed to fetch ibadah data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -912,19 +969,23 @@ export function KamadIbadahSiswa() {
           <CardContent>
             <div className="flex items-center justify-center p-6 border-b border-slate-100">
               <div className="text-center">
-                <p className="text-4xl font-black text-emerald-600">85%</p>
+                <p className="text-4xl font-black text-emerald-600">{loading ? '...' : `${dhuhaRate}%`}</p>
                 <p className="text-sm text-slate-500 mt-2 font-medium">Tingkat Kehadiran Dhuha Hari Ini</p>
               </div>
             </div>
             <div className="pt-6">
               <h4 className="text-sm font-bold text-slate-800 mb-4">Kelas Terbanyak Tidak Sholat Dhuha:</h4>
               <div className="space-y-3">
-                {classDhuhaRank.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-100">
-                    <span className="font-bold text-slate-800 text-sm">{idx + 1}. {item.className}</span>
-                    <span className="text-sm font-medium text-rose-600">{item.absent} Siswa Tidak Hadir</span>
-                  </div>
-                ))}
+                {classDhuhaRank.length > 0 ? (
+                  classDhuhaRank.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-100">
+                      <span className="font-bold text-slate-800 text-sm">{idx + 1}. {item.className}</span>
+                      <span className="text-sm font-medium text-rose-600">{item.absent} Siswa Tidak Hadir</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 italic text-center py-4">Belum ada data siswa tidak hadir.</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -937,19 +998,23 @@ export function KamadIbadahSiswa() {
           <CardContent>
             <div className="flex items-center justify-center p-6 border-b border-slate-100">
               <div className="text-center">
-                <p className="text-4xl font-black text-emerald-600">92%</p>
+                <p className="text-4xl font-black text-emerald-600">{loading ? '...' : `${zuhurRate}%`}</p>
                 <p className="text-sm text-slate-500 mt-2 font-medium">Tingkat Kehadiran Zuhur Hari Ini</p>
               </div>
             </div>
             <div className="pt-6">
               <h4 className="text-sm font-bold text-slate-800 mb-4">Kelas Terbanyak Tidak Sholat Zuhur:</h4>
               <div className="space-y-3">
-                {classZuhurRank.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-100">
-                    <span className="font-bold text-slate-800 text-sm">{idx + 1}. {item.className}</span>
-                    <span className="text-sm font-medium text-rose-600">{item.absent} Siswa Tidak Hadir</span>
-                  </div>
-                ))}
+                {classZuhurRank.length > 0 ? (
+                  classZuhurRank.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-100">
+                      <span className="font-bold text-slate-800 text-sm">{idx + 1}. {item.className}</span>
+                      <span className="text-sm font-medium text-rose-600">{item.absent} Siswa Tidak Hadir</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 italic text-center py-4">Belum ada data siswa tidak hadir.</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -975,11 +1040,21 @@ export function KamadKinerjaStaf() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const users = await apiClient('/crud.php?table=users');
-        const filteredUsers = users.filter((u: any) => {
+        const [users, kinerja, schedules] = await Promise.all([
+          apiClient('/crud.php?table=users'),
+          apiClient('/crud.php?table=kinerja_staf').catch(() => []),
+          apiClient('/crud.php?table=schedules').catch(() => [])
+        ]);
+
+        const currentDayIndex = new Date().getDay();
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const currentDayName = days[currentDayIndex];
+        const todaySchedules = Array.isArray(schedules) ? schedules.filter((s: any) => s.day === currentDayName) : [];
+
+        const filteredUsers = Array.isArray(users) ? users.filter((u: any) => {
           const r = u.roles ? (typeof u.roles === 'string' ? JSON.parse(u.roles) : u.roles) : [u.role];
           return r.includes('guru') || r.includes('walas') || r.includes('guru_quran') || r.includes('tendik');
-        });
+        }) : [];
 
         const mappedStaf = filteredUsers.map((u: any, index: number) => {
           const r = u.roles ? (typeof u.roles === 'string' ? JSON.parse(u.roles) : u.roles) : [u.role];
@@ -1001,21 +1076,71 @@ export function KamadKinerjaStaf() {
             mainRole = 'Guru BK';
           }
 
-          // Assign mock tasks based on role for Kamad preview. 
-          // (Since actual tasks are not tracked dynamically in DB right now)
-          let tasks = [
-            { name: 'Absensi Mengajar', status: (index % 3 === 0) ? 'belum' : 'selesai', time: (index % 3 === 0) ? 'Dalam Jam Kerja' : '07:35 WIB' },
-            { name: 'Jurnal Ajar', status: (index % 4 === 0) ? 'terlewat' : 'selesai', time: (index % 4 === 0) ? 'Batas Jam Kerja Terlewat' : '08:15 WIB' },
-          ];
-
-          if (category === 'wali_kelas') {
-            tasks.push({ name: 'Periksa Pantauan Pagi Siswa', status: 'selesai', time: '07:05 WIB' });
-            tasks.push({ name: 'Absensi Sholat Zuhur Siswa', status: 'belum', time: 'Dalam Jam Kerja' });
+          const todayString = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+          const userKinerja = Array.isArray(kinerja) ? kinerja.filter((k: any) => {
+            if (String(k.user_id) !== String(u.id) || !k.created_at) return false;
+            const taskDate = new Date(k.created_at).toLocaleDateString('en-CA');
+            return taskDate === todayString;
+          }) : [];
+          
+          let requiredTasks: string[] = [];
+          
+          if (r.includes('walas')) {
+            requiredTasks.push(
+              'Absensi siswa binaan pada pagi hari',
+              'Pemantauan pagi, cek piket dan kelengkapan siswa',
+              'Mengabsen sholat Zuhur siswa kelas binaannya'
+            );
           }
           
-          // Generate mock weekly stats
-          const mockCompletionRate = 100 - ((index * 7) % 35);
-          const mockViolations = (index * 3) % 8;
+          if (r.includes('guru') || r.includes('guru_quran') || r.includes('walas')) {
+            const mySchedules = todaySchedules.filter((s: any) => String(s.teacher_id) === String(u.id));
+            if (mySchedules.length > 0) {
+              const uniqueSchedules = Array.from(new Set(mySchedules.map((s: any) => `${s.class_name}:::${s.subject_name}`))).map(s => (s as string).split(':::'));
+              uniqueSchedules.forEach(([className, subjectName]) => {
+                requiredTasks.push(`Absen ${className} (${subjectName})`);
+                requiredTasks.push(`Membuat Modul Ajar ${className} (${subjectName})`);
+                requiredTasks.push(`Jurnal Ajar ${className} (${subjectName})`);
+              });
+            }
+          }
+          
+          if (r.includes('guru_quran')) {
+            requiredTasks.push('Mengabsen siswa sholat Dhuha');
+          }
+          
+          let tasks = requiredTasks.map(taskName => {
+             const found = userKinerja.find((k: any) => k.task === taskName);
+             if (found) {
+               return {
+                 name: taskName,
+                 status: found.status === 'Selesai' ? 'selesai' : 'belum',
+                 time: new Date(found.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+               };
+             } else {
+               return {
+                 name: taskName,
+                 status: 'belum',
+                 time: 'Dalam Jam Kerja'
+               };
+             }
+          });
+          
+          // Allow other tasks that are not required but logged
+          userKinerja.forEach((k: any) => {
+            if (!requiredTasks.includes(k.task)) {
+              tasks.push({
+                name: k.task,
+                status: k.status === 'Selesai' ? 'selesai' : 'belum',
+                time: new Date(k.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+              });
+            }
+          });
+
+          const tuntas = tasks.filter((t: any) => t.status === 'selesai').length;
+          const totalTasks = tasks.length;
+          const completionRate = totalTasks > 0 ? Math.round((tuntas / totalTasks) * 100) : 0;
+          const violations = tasks.filter((t: any) => t.status === 'terlewat').length;
 
           return {
             id: u.id,
@@ -1025,8 +1150,8 @@ export function KamadKinerjaStaf() {
             category: category,
             tasks: tasks,
             weeklyStats: {
-              completionRate: mockCompletionRate,
-              violations: mockViolations
+              completionRate: completionRate,
+              violations: violations
             }
           };
         });
@@ -1036,6 +1161,7 @@ export function KamadKinerjaStaf() {
         console.error("Failed to fetch staf list", err);
       }
     };
+
     fetchUsers();
   }, []);
 
@@ -1306,6 +1432,13 @@ export function KamadKinerjaStaf() {
 export function KamadApprovalIzin() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ id: string; status: 'approved' | 'rejected'; userName: string; type: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const triggerToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchRequests = () => {
     setLoading(true);
@@ -1331,20 +1464,19 @@ export function KamadApprovalIzin() {
     fetchRequests();
   }, []);
 
-  const handleUpdateStatus = (id: string, status: string) => {
-    if (!window.confirm(`Yakin ingin update status menjadi ${status}?`)) return;
-    
+  const handleUpdateStatus = (id: string, status: 'approved' | 'rejected') => {
     apiClient(`/crud.php?table=leave_requests&id=${id}`, {
       method: 'PUT',
       body: JSON.stringify({ status })
     })
     .then(() => {
       fetchRequests();
-      window.alert('Status berhasil diupdate!');
+      setConfirmAction(null);
+      triggerToast(`Berhasil ${status === 'approved' ? 'menyetujui' : 'menolak'} pengajuan izin.`);
     })
     .catch(err => {
       console.error(err);
-      window.alert('Gagal mengupdate status');
+      triggerToast('Gagal memperbarui status izin', 'error');
     });
   };
 
@@ -1360,7 +1492,24 @@ export function KamadApprovalIzin() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 font-bold text-xs ${
+              toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+            <span>{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <h1 className="text-2xl font-bold tracking-tight text-slate-800">Approval Perizinan Staf & Guru</h1>
       <Card>
         <CardContent className="p-6">
@@ -1396,8 +1545,18 @@ export function KamadApprovalIzin() {
                         <td className="py-4 px-4 text-center">
                           {r.status === 'pending' ? (
                             <div className="flex items-center justify-center gap-2">
-                               <button onClick={() => handleUpdateStatus(r.id, 'approved')} className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Terima</button>
-                               <button onClick={() => handleUpdateStatus(r.id, 'rejected')} className="bg-red-50 text-red-600 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Tolak</button>
+                               <button 
+                                 onClick={() => setConfirmAction({ id: r.id, status: 'approved', userName: r.user_name, type: r.type })} 
+                                 className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition-colors cursor-pointer"
+                               >
+                                 Terima
+                               </button>
+                               <button 
+                                 onClick={() => setConfirmAction({ id: r.id, status: 'rejected', userName: r.user_name, type: r.type })} 
+                                 className="bg-red-50 text-red-600 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition-colors cursor-pointer"
+                               >
+                                 Tolak
+                               </button>
                             </div>
                           ) : (
                             <span className="text-xs text-slate-400 font-medium">Selesai</span>
@@ -1411,18 +1570,279 @@ export function KamadApprovalIzin() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmAction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmAction(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 z-10"
+            >
+              <div className="p-6 text-center">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  confirmAction.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                }`}>
+                  {confirmAction.status === 'approved' ? <CheckCircle2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-2">
+                  {confirmAction.status === 'approved' ? 'Setujui Permohonan Izin?' : 'Tolak Permohonan Izin?'}
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Apakah Anda yakin ingin {confirmAction.status === 'approved' ? 'menyetujui' : 'menolak'} permohonan izin <strong>{confirmAction.userName}</strong> ({confirmAction.type?.replace('_', ' ')})?
+                </p>
+              </div>
+              <div className="flex border-t border-slate-100 bg-slate-50 p-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  className="flex-1 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 bg-white cursor-pointer"
+                >
+                  BATAL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateStatus(confirmAction.id, confirmAction.status)}
+                  className={`flex-1 px-4 py-2 text-xs font-bold text-white rounded-lg transition-colors shadow-xs cursor-pointer ${
+                    confirmAction.status === 'approved' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  YA, {confirmAction.status === 'approved' ? 'SETUJUI' : 'TOLAK'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 
 export function KamadIbadahGuru() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [ibadahRecords, setIbadahRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState(new Date().toLocaleDateString('en-CA'));
+  const [viewMode, setViewMode] = useState<'harian' | 'mingguan'>('harian');
+  
+  // Calculate current week string (e.g., "2026-W31")
+  const getWeekString = (d: Date) => {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    const week = 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    return `${date.getFullYear()}-W${week.toString().padStart(2, '0')}`;
+  };
+  const [weekFilter, setWeekFilter] = useState(getWeekString(new Date()));
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [uRes, iRes] = await Promise.all([
+        apiClient('/crud.php?table=users'),
+        apiClient('/crud.php?table=ibadah_guru').catch(() => [])
+      ]);
+      
+      const teachers = (uRes || []).filter((u: any) => {
+        const r = u.roles ? (typeof u.roles === 'string' ? JSON.parse(u.roles) : u.roles) : [u.role];
+        return r.includes('guru') || r.includes('walas') || r.includes('guru_quran');
+      });
+      setUsers(teachers);
+      setIbadahRecords(iRes || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getWeekRange = (weekStr: string) => {
+    if (!weekStr) return { start: new Date(), end: new Date() };
+    const [year, week] = weekStr.split('-W');
+    const simple = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = simple;
+    if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    
+    const end = new Date(ISOweekStart);
+    end.setDate(ISOweekStart.getDate() + 6);
+    return { start: ISOweekStart, end: end };
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-800">Monitoring Ibadah Guru</h1>
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-slate-500 text-sm">Data pemantauan ibadah guru akan ditampilkan di sini.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Monitoring Ibadah Guru</h1>
+          <p className="text-slate-500 mt-1 text-sm">Pantau pelaksanaan sholat jamaah guru</p>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-lg">
+          <button
+            onClick={() => setViewMode('harian')}
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewMode === 'harian' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Harian
+          </button>
+          <button
+            onClick={() => setViewMode('mingguan')}
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${viewMode === 'mingguan' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Mingguan
+          </button>
+        </div>
+      </div>
+
+      <Card className="border-slate-200/60 shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <CardTitle className="text-base font-bold text-slate-800">
+              {viewMode === 'harian' ? 'Data Jamaah Zuhur Harian' : 'Rekapitulasi Mingguan'}
+            </CardTitle>
+            {viewMode === 'harian' ? (
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+              />
+            ) : (
+              <input
+                type="week"
+                value={weekFilter}
+                onChange={(e) => setWeekFilter(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+              />
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-8 text-center text-slate-500">Memuat data...</div>
+          ) : viewMode === 'harian' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Guru</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Jamaah/Tidak</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u, i) => {
+                    const record = ibadahRecords.find(r => String(r.user_id) === String(u.id) && (r.date === dateFilter || (r.date && r.date.startsWith(dateFilter))));
+                    return (
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold uppercase shrink-0 text-xs">
+                              {u.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 text-sm">{u.name}</p>
+                              <p className="text-xs text-slate-500">{u.role}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          {record?.status === 'Jamaah' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Jamaah
+                            </span>
+                          ) : record?.status === 'Tidak Jamaah' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Tidak Jamaah
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold border border-slate-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Belum Mengisi
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-600">
+                          {record?.status === 'Tidak Jamaah' && record?.keterangan ? (
+                            <span className="italic">"{record.keterangan}"</span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Guru</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Jml Jamaah</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Jml Tidak Jamaah</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u, i) => {
+                    const { start, end } = getWeekRange(weekFilter);
+                    const startStr = start.toLocaleDateString('en-CA');
+                    const endStr = end.toLocaleDateString('en-CA');
+                    
+                    const weekRecords = ibadahRecords.filter(r => 
+                      String(r.user_id) === String(u.id) && 
+                      (r.date >= startStr || (r.date && r.date.substring(0,10) >= startStr)) && 
+                      (r.date <= endStr || (r.date && r.date.substring(0,10) <= endStr))
+                    );
+                    
+                    const jamaahCount = weekRecords.filter(r => r.status === 'Jamaah').length;
+                    const tidakJamaahCount = weekRecords.filter(r => r.status === 'Tidak Jamaah').length;
+                    
+                    return (
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold uppercase shrink-0 text-xs">
+                              {u.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 text-sm">{u.name}</p>
+                              <p className="text-xs text-slate-500">{u.role}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold border border-emerald-100">
+                            {jamaahCount}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="inline-block px-3 py-1 bg-rose-50 text-rose-700 rounded-lg font-bold border border-rose-100">
+                            {tidakJamaahCount}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -1431,10 +1851,55 @@ export function KamadIbadahGuru() {
 
 export function KamadLaporanBKPustaka() {
   const [selectedSemester, setSelectedSemester] = useState('Ganjil 2026/2027');
+  const [laporan, setLaporan] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
   const semesters = [
     { value: 'Ganjil 2026/2027', label: 'Ganjil 2026/2027 (Aktif)' },
     { value: 'Genap 2025/2026', label: 'Genap 2025/2026' }
   ];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [laporanData, usersData] = await Promise.all([
+          apiClient('/crud.php?table=laporan_harian').catch(() => []),
+          apiClient('/crud.php?table=users').catch(() => [])
+        ]);
+
+        const uMap: Record<string, string> = {};
+        if (Array.isArray(usersData)) {
+          usersData.forEach((u: any) => {
+            uMap[u.id] = u.name;
+          });
+        }
+        setUsersMap(uMap);
+
+        if (Array.isArray(laporanData)) {
+          // sort descending by date and created_at
+          laporanData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setLaporan(laporanData);
+        }
+      } catch (err) {
+        console.error('Failed to fetch laporan data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Hari Ini';
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const laporanBK = laporan.filter(l => l.role === 'bk');
+  const laporanPustaka = laporan.filter(l => l.role === 'pustakawan');
 
   return (
     <div className="space-y-6">
@@ -1461,10 +1926,21 @@ export function KamadLaporanBKPustaka() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <p className="text-xs text-slate-500 font-bold mb-1">Hari Ini</p>
-                <p className="text-sm font-medium text-slate-700">Melakukan konseling individu dengan 3 siswa kelas X-IPA terkait minat bakat.</p>
-              </div>
+              {loading ? (
+                <p className="text-sm text-slate-500 text-center py-4">Memuat data...</p>
+              ) : laporanBK.length > 0 ? (
+                laporanBK.map((item, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-slate-500 font-bold">{formatDate(item.date)}</p>
+                      <p className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-bold">{usersMap[item.user_id] || 'Guru BK'}</p>
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">{item.activity}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">Belum ada laporan BK.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1475,10 +1951,21 @@ export function KamadLaporanBKPustaka() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <p className="text-xs text-slate-500 font-bold mb-1">Hari Ini</p>
-                <p className="text-sm font-medium text-slate-700">Katalogisasi 50 buku baru dan melayani peminjaman 24 buku kepada siswa.</p>
-              </div>
+              {loading ? (
+                <p className="text-sm text-slate-500 text-center py-4">Memuat data...</p>
+              ) : laporanPustaka.length > 0 ? (
+                laporanPustaka.map((item, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-slate-500 font-bold">{formatDate(item.date)}</p>
+                      <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded font-bold">{usersMap[item.user_id] || 'Pustakawan'}</p>
+                    </div>
+                    <p className="text-sm font-medium text-slate-700">{item.activity}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">Belum ada laporan Pustakawan.</p>
+              )}
             </div>
           </CardContent>
         </Card>

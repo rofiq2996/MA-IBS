@@ -184,8 +184,10 @@ export function MobileDashboard() {
       case 'walas':
         const walasLinks = [
           { to: '/data-siswa', icon: Users, label: 'Data Siswa', color: 'text-sky-600', bg: 'bg-sky-50', desc: 'Daftar & profil siswa' },
-          { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Jadwal mengajar kelas' },
+          { to: '/users', icon: UserCheck, label: 'Akun Pengguna', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Kelola akun sekolah' },
+          { to: '/jadwal-pelajaran-kelas', icon: Calendar, label: 'Jadwal Pelajaran', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Jadwal pelajaran kelas' },
           { to: '/absensi', icon: CheckSquare, label: 'Absensi', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Kehadiran siswa harian' },
+          { to: '/laporan', icon: FileText, label: 'Laporan', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Cetak Laporan Akademik' },
           { to: '/pemantauan', icon: ShieldCheck, label: 'Pemantauan Pagi', color: 'text-red-600', bg: 'bg-red-50', desc: 'Kontrol ketertiban pagi' },
           { to: '/nilai-sikap', icon: Heart, label: 'Nilai Sikap', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Penilaian akhlak siswa' },
           { to: '/sholat-zuhur', icon: Moon, label: 'Pantau Zuhur Siswa', color: 'text-slate-600', bg: 'bg-slate-50', desc: 'Absensi sholat zuhur' },
@@ -196,8 +198,8 @@ export function MobileDashboard() {
           { to: '/settings', icon: FileCheck, label: 'Pengaturan Guru', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Keamanan akun' },
         ];
         if (teachesXII) {
-          walasLinks.splice(7, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas kelas binaan' });
-          walasLinks.splice(8, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Kelola ujian CBT kelas' });
+          walasLinks.splice(9, 0, { to: '/lms-tugas', icon: ClipboardList, label: 'LMS & Tugas', color: 'text-cyan-600', bg: 'bg-cyan-50', desc: 'Tugas kelas binaan' });
+          walasLinks.splice(10, 0, { to: '/cbt', icon: FileText, label: 'Ujian CBT', color: 'text-fuchsia-600', bg: 'bg-fuchsia-50', desc: 'Kelola ujian CBT kelas' });
         }
         return walasLinks;
       case 'admin':
@@ -227,6 +229,7 @@ export function MobileDashboard() {
           { to: '/kuratif', icon: Stethoscope, label: 'Kuratif', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Penyelesaian masalah siswa' },
           { to: '/penyaluran', icon: Map, label: 'Penyaluran', color: 'text-purple-600', bg: 'bg-purple-50', desc: 'Studi lanjut siswa' },
           { to: '/advokasi', icon: Scale, label: 'Advokasi', color: 'text-red-600', bg: 'bg-red-50', desc: 'Pendampingan hak siswa' },
+          { to: '/administrasi-bk', icon: ClipboardList, label: 'Laporan Harian', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Aktivitas Harian BK' },
           { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur', color: 'text-emerald-600', bg: 'bg-emerald-50', desc: 'Monitor jamaah zuhur' },
         ];
       case 'pustaka':
@@ -316,7 +319,7 @@ export function MobileDashboard() {
       case 'admin': return '/users';
       case 'guru':
       case 'guru_quran': return '/absensi';
-      case 'walas': return '/pemantauan';
+      case 'walas': return '/absensi';
       case 'siswa': return '/lms-tugas';
       case 'wakakurikulum': return '/kurikulum/jadwal';
       case 'wakakesiswaan': return '/kesiswaan/data';

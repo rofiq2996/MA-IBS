@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export function Sidebar() {
+export function Sidebar({ unreadNotifCount = 0 }: { unreadNotifCount?: number }) {
   const { user, logout } = useAuth();
 
   const getLinks = () => {
@@ -79,7 +79,7 @@ export function Sidebar() {
         { to: '/', icon: Home, label: 'Beranda' },
         { to: '/data-siswa', icon: Users, label: 'Data Siswa' },
         { to: '/users', icon: UserCheck, label: 'Akun Pengguna' },
-        { to: '/jadwal-mengajar', icon: Calendar, label: 'Jadwal Mengajar' },
+        { to: '/jadwal-pelajaran-kelas', icon: Calendar, label: 'Jadwal Pelajaran' },
         { to: '/absensi', icon: CheckSquare, label: 'Absensi' },
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
         { to: '/laporan', icon: FileText, label: 'Laporan' },
@@ -131,6 +131,7 @@ export function Sidebar() {
         { to: '/penyaluran', icon: Map, label: 'Fungsi Penyaluran' },
         { to: '/advokasi', icon: Scale, label: 'Fungsi Advokasi' },
         { to: '/absensi-zuhur', icon: Moon, label: 'Absensi Zuhur' },
+        { to: '/administrasi-bk', icon: Clipboard, label: 'Laporan Harian' },
       ];
     } else if (user?.role === 'pustaka') {
       return [
@@ -250,7 +251,7 @@ export function Sidebar() {
             to={link.to}
             className={({ isActive }) =>
               cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-sm transition-colors",
+                "flex items-center space-x-3 px-3 py-2 rounded-sm transition-colors relative",
                 isActive 
                   ? "bg-emerald-800/50 border-r-4 border-emerald-400 text-white" 
                   : "text-emerald-200 hover:bg-emerald-800"
@@ -259,6 +260,11 @@ export function Sidebar() {
           >
             <link.icon className={cn("w-5 h-5", "opacity-80")} />
             <span className="text-sm font-medium">{link.label}</span>
+            {link.to === '/notifications' && unreadNotifCount > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

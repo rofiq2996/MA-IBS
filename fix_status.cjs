@@ -9,8 +9,8 @@ async function run() {
     database: process.env.DB_NAME
   });
 
-  const [rows] = await connection.query('SHOW COLUMNS FROM materi_ajar');
-  console.log(rows);
+  const [res] = await connection.query("UPDATE materi_ajar SET status = 'Terbit' WHERE status = '' OR status IS NULL OR status = 'Sudah Membuat'");
+  console.log(res);
   
   await connection.end();
 }

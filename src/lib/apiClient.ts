@@ -6,7 +6,6 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
   const url = endpoint === '/sync' ? `${API_URL}/sync.php` : `${API_URL}${endpoint}`;
   console.log('Fetching API:', url);
   const defaultHeaders = { 'Content-Type': 'application/json' };
-
   try {
     const response = await fetch(url, {
       ...options,
@@ -15,11 +14,9 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
         ...options.headers,
       },
     });
-
     if (!response.ok) {
       throw new Error(`API error: ${response.statusText}`);
     }
-
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       return await response.json();
@@ -33,4 +30,19 @@ export const apiClient = async (endpoint: string, options: RequestInit = {}) => 
     throw error;
   }
 }
+
+export const logKinerja = async (userId: number, task: string) => {
+  try {
+    await apiClient('/crud.php?table=kinerja_staf', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        task: task,
+        status: 'Selesai'
+      })
+    });
+  } catch (err) {
+    console.error('Failed to log kinerja:', err);
+  }
+};
 

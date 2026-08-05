@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { remoteStorage } from '../lib/remoteStorage';
+import { apiClient } from '../lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { User, Shield, School, LogOut, Lock, BellRing, Save, CheckCircle, Plus, Trash2, AlertCircle, BookOpen, Database, DownloadCloud, UploadCloud } from 'lucide-react';
@@ -19,6 +20,11 @@ export function AdminSettings() {
   const [username, setUsername] = useState(user?.username || '');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // School info settings
+  const [schoolName, setSchoolName] = useState(remoteStorage.getItem('school_name') || 'MAN 1 Model');
+  const [npsn, setNpsn] = useState(remoteStorage.getItem('npsn') || '20202020');
+  const [schoolAddress, setSchoolAddress] = useState(remoteStorage.getItem('school_address') || 'Jl. Pendidikan No. 1, Kota Pelajar');
+
   // Location settings
   const [schoolLatL, setSchoolLatL] = useState(remoteStorage.getItem('school_lat_l') || '-0.502');
   const [schoolLngL, setSchoolLngL] = useState(remoteStorage.getItem('school_lng_l') || '101.447');
@@ -32,43 +38,11 @@ export function AdminSettings() {
   const [limitAbsenSiswa, setLimitAbsenSiswa] = useState(remoteStorage.getItem('limit_absen_siswa') || '15:00');
   const [limitAbsenZuhur, setLimitAbsenZuhur] = useState(remoteStorage.getItem('limit_absen_zuhur') || '13:00');
 
-  // Teacher Subjects State
-  const [subjects, setSubjects] = useState<{ id: string; subjectName: string; className: string }[]>(user?.subjects || []);
-
-  const saveTeacherSubjects = (newSubjects: any) => {
-    if (!user) return;
-    const userIndex = mockUsers.findIndex(u => u.id === user.id);
-    if (userIndex !== -1) {
-      mockUsers[userIndex].subjects = newSubjects;
-    }
-  };
-      
-  // Dynamic admin-configured lists loaded from remoteStorage with fallbacks
-  const adminSubjects = mockSubjects;
-
-  const adminClasses = mockClasses;
-
-  const subjectOptions = React.useMemo(() => 
-    adminSubjects.map((s: any) => ({ value: s.name, label: s.name })), 
-    [adminSubjects]
-  );
-
-  const classOptions = React.useMemo(() => 
-    adminClasses.map((c: any) => ({ value: c.name, label: `Kelas ${c.name}` })), 
-    [adminClasses]
-  );
-
-  
-  const handleDeleteSubject = (id: string) => {
-    const updated = subjects.filter(s => s.id !== id);
-    setSubjects(updated);
-    saveTeacherSubjects(updated);
-    setSuccessMessage('Mata pelajaran berhasil dihapus!');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    remoteStorage.setItem('school_name', schoolName);
+    remoteStorage.setItem('npsn', npsn);
+    remoteStorage.setItem('school_address', schoolAddress);
     remoteStorage.setItem('school_lat_l', schoolLatL);
     remoteStorage.setItem('school_lng_l', schoolLngL);
     remoteStorage.setItem('school_radius_l', schoolRadiusL);
@@ -268,17 +242,17 @@ export function AdminSettings() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Nama Sekolah</label>
-                      <input type="text" defaultValue="MAN 1 Model" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700" />
+                      <input type="text" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="MAN 1 Model" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">NPSN</label>
-                      <input type="text" defaultValue="20202020" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700" />
+                      <input type="text" value={npsn} onChange={(e) => setNpsn(e.target.value)} placeholder="20202020" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700" />
                     </div>
                   </div>
                   
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Alamat Sekolah</label>
-                    <textarea rows={3} defaultValue="Jl. Pendidikan No. 1, Kota Pelajar" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700"></textarea>
+                    <textarea rows={3} value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} placeholder="Jl. Pendidikan No. 1, Kota Pelajar" className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold text-slate-700"></textarea>
                   </div>
                   
                   <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mt-4">Koordinat Masjid (Laki-laki)</h4>
@@ -371,65 +345,6 @@ export function AdminSettings() {
                 </CardContent>
               </Card>
 
-              {(user?.role === 'guru' || user?.role === 'walas') && (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4.5 h-4.5 text-emerald-600 animate-pulse" />
-                      <CardTitle>Mata Pelajaran & Kelas yang Diampu</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                      Berikut adalah daftar mata pelajaran dan kelas yang Anda ajar. Daftar ini dikelola oleh Admin atau Waka Kurikulum. Jika terdapat ketidaksesuaian, silakan hubungi pihak terkait.
-                    </p>
-
-                    
-
-                    <div className="overflow-x-auto rounded-xl border border-slate-100">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                          <tr>
-                            <th className="py-2.5 px-4">Mata Pelajaran</th>
-                            <th className="py-2.5 px-4 w-32 text-center">Kelas</th>
-                            <th className="py-2.5 px-4 w-20 text-center">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-xs font-semibold text-slate-700 divide-y divide-slate-100">
-                          {subjects.length > 0 ? (
-                            subjects.map((s) => (
-                              <tr key={s.id} className="hover:bg-slate-50/50">
-                                <td className="py-3 px-4 font-bold text-slate-800">{s.subjectName}</td>
-                                <td className="py-3 px-4 text-center">
-                                  <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-[10px] font-bold uppercase">
-                                    Kelas {s.className}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteSubject(s.id)}
-                                    className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                    title="Hapus Mapel"
-                                  >
-                                    <Trash2 className="w-4 h-4 mx-auto" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={3} className="py-8 text-center text-slate-400 font-medium italic">
-                                Belum ada mata pelajaran & kelas yang diatur.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
 

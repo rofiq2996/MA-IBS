@@ -13,7 +13,6 @@ $query = "
 
 $stmt = $conn->prepare($query);
 $stmt->execute();
-
 $materi_list = array();
 
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -30,11 +29,13 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     
     $row['objectives'] = $objectives;
     
-    // Sesuaikan format role dengan frontend
-    if($row['role'] == 'guru') $row['category'] = 'guru_mapel';
-    else if($row['role'] == 'walas') $row['category'] = 'wali_kelas';
-    else if($row['role'] == 'guru_quran') $row['category'] = 'guru_quran';
-    else $row['category'] = 'lainnya';
+    // Sesuaikan format role dengan subject
+    $subject_lower = strtolower($row['subject']);
+    if (strpos($subject_lower, 'quran') !== false || strpos($subject_lower, 'tahfizh') !== false) {
+        $row['category'] = 'guru_quran';
+    } else {
+        $row['category'] = 'guru_mapel';
+    }
 
     array_push($materi_list, $row);
 }

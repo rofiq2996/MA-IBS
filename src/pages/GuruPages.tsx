@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { remoteStorage } from '../lib/remoteStorage';
 import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../lib/apiClient';
+import { apiClient, logKinerja } from '../lib/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -527,7 +527,7 @@ export function Absensi() {
   const hasScheduleForSubject = selectedMapel === 'Presensi Wali Kelas' || schedules.length === 0 || schedules.some((s: any) => (s.class_name === selectedClass || s.rombel === selectedClass) && (s.subject_name === selectedMapel || s.mapel === selectedMapel));
   const isScheduleCreated = schedules.length > 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedClass) {
       window.alert("Pilih kelas terlebih dahulu!");
       return;
@@ -552,6 +552,11 @@ export function Absensi() {
     existingData[today] = attendance;
     remoteStorage.setItem(storageKey, JSON.stringify(existingData));
     setIsLocked(true);
+    
+    if (user?.id) {
+      const taskName = selectedMapel === 'Presensi Wali Kelas' ? 'Absensi siswa binaan pada pagi hari' : `Absen ${selectedClass} (${selectedMapel})`;
+      await logKinerja(user.id, taskName);
+    }
     
     window.alert("Absensi berhasil disimpan!");
   };
@@ -785,6 +790,7 @@ export function InputNilai() {
 
   const [uhCount, setUhCount] = useState(1);
   const [grades, setGrades] = useState<Record<string, any>>({});
+  const [isLocked, setIsLocked] = useState(false);
 
   // Update selected class when available classes load
   useEffect(() => {
@@ -807,10 +813,12 @@ export function InputNilai() {
       const storageKey = `grades_${selectedClass}_${selectedMapel}`;
       const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
       setGrades(savedData);
+      setIsLocked(Object.keys(savedData).length > 0);
     }
   }, [selectedClass, selectedMapel]);
   
   const handleGradeChange = (studentId: string, field: string, value: string) => {
+    if (isLocked) return;
     setGrades(prev => ({
       ...prev,
       [studentId]: {
@@ -831,6 +839,7 @@ export function InputNilai() {
     }
     const storageKey = `grades_${selectedClass}_${selectedMapel}`;
     remoteStorage.setItem(storageKey, JSON.stringify(grades));
+    setIsLocked(true);
     window.alert("Nilai berhasil disimpan!");
   };
 
@@ -903,13 +912,23 @@ export function InputNilai() {
               </div>
 
               {/* Simpan Button */}
-              <button 
-                onClick={handleSave}
-                className="w-full md:w-auto px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Simpan
-              </button>
+              {isLocked ? (
+                <button 
+                  onClick={() => setIsLocked(false)}
+                  className="w-full md:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit Nilai
+                </button>
+              ) : (
+                <button 
+                  onClick={handleSave}
+                  className="w-full md:w-auto px-5 py-2.5 bg-[#1e7b55] hover:bg-[#166544] text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap transition-colors shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Simpan
+                </button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -942,8 +961,9 @@ export function InputNilai() {
                           type="number" 
                           placeholder="0" 
                           value={grades[s.id]?.[`uh${idx + 1}`] || ''}
+                          disabled={isLocked}
                           onChange={(e) => handleGradeChange(s.id, `uh${idx + 1}`, e.target.value)}
-                          className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                          className={`w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`} 
                         />
                       </td>
                     ))}
@@ -952,8 +972,9 @@ export function InputNilai() {
                         type="number" 
                         placeholder="0" 
                         value={grades[s.id]?.uts || ''}
+                        disabled={isLocked}
                         onChange={(e) => handleGradeChange(s.id, 'uts', e.target.value)}
-                        className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                        className={`w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`} 
                       />
                     </td>
                     <td className="py-3 px-4">
@@ -961,8 +982,9 @@ export function InputNilai() {
                         type="number" 
                         placeholder="0" 
                         value={grades[s.id]?.uas || ''}
+                        disabled={isLocked}
                         onChange={(e) => handleGradeChange(s.id, 'uas', e.target.value)}
-                        className="w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" 
+                        className={`w-full min-w-[60px] p-2 border border-slate-200 rounded text-center text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${isLocked ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`} 
                       />
                     </td>
                   </tr>
@@ -1043,8 +1065,7 @@ export function JurnalMengajar() {
   };
 
   const [toastMessage, setToastMessage] = useState('');
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selected || !materi || !tanggal) {
       setToastMessage('Mohon lengkapi form jurnal!');
       setTimeout(() => setToastMessage(''), 3000);
@@ -1078,6 +1099,10 @@ export function JurnalMengajar() {
       
       saveToStorage([newJurnal, ...jurnals]);
       setToastMessage("Jurnal mengajar berhasil disimpan!");
+    }
+    
+    if (user?.id && !editingId) {
+      await logKinerja(user.id, `Jurnal Ajar ${kelas} (${mapel})`);
     }
     
     setTimeout(() => setToastMessage(''), 3000);
@@ -1380,7 +1405,8 @@ export function PerangkatNgajar() {
   
   const [modulList, setModulList] = useState<ModulAjarItem[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
   const fetchModul = async () => {
     try {
       setLoading(true);
@@ -1389,13 +1415,13 @@ export function PerangkatNgajar() {
         const mapped = res.data.map((m: any) => ({
           id: m.id,
           teacherName: m.name,
-          role: m.role === 'walas' ? 'Wali Kelas' : 'Guru Mapel',
-          category: m.category,
+          role: (m.subject.toLowerCase().includes('quran') || m.subject.toLowerCase().includes('tahfizh')) ? 'Guru Al-Qur\'an' : 'Guru Mapel',
+          category: (m.subject.toLowerCase().includes('quran') || m.subject.toLowerCase().includes('tahfizh')) ? 'guru_quran' : 'guru_mapel',
           subject: m.subject,
           className: m.class,
           title: m.title,
           date: m.date,
-          status: m.status,
+          status: (m.status === 'Terbit' || m.status === 'Sudah Membuat') ? 'Sudah Membuat' : 'Belum Membuat',
           driveUrl: m.file_name,
           description: m.description,
           objectives: m.objectives || []
@@ -1411,6 +1437,12 @@ export function PerangkatNgajar() {
 
   useEffect(() => {
     fetchModul();
+    apiClient('/crud.php?table=teaching_assignments').then(res => {
+      setTeachingAssignments(Array.isArray(res) ? res : []);
+    }).catch(console.error);
+    apiClient('/crud.php?table=schedules').then(res => {
+      setSchedules(Array.isArray(res) ? res : []);
+    }).catch(console.error);
   }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -1421,8 +1453,39 @@ export function PerangkatNgajar() {
   const [deleteConfirm, setDeleteConfirm] = useState<{id: string, title: string} | null>(null);
 
   // Form Fields
-  const [formSubject, setFormSubject] = useState(teacherSubjects[0]?.subjectName || 'Matematika');
-  const [formClass, setFormClass] = useState(teacherSubjects[0]?.className || 'X IPA 1');
+  const [formSubject, setFormSubject] = useState('');
+  const [formClass, setFormClass] = useState('');
+
+  // Get assignments and schedules for current user
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+
+  // Extract unique classes from both
+  const allClasses = [...teacherAssignments.map(a => a.class_name), ...teacherSchedules.map(s => s.class_name)];
+  const uniqueClasses = Array.from(new Set(allClasses)).filter(Boolean).sort();
+  
+  // Available subjects for selected class from both
+  const allSubjectsForClass = [
+    ...teacherAssignments.filter(a => a.class_name === formClass).map(a => a.subject_name),
+    ...teacherSchedules.filter(s => s.class_name === formClass).map(s => s.subject_name)
+  ];
+  const availableSubjects = Array.from(new Set(allSubjectsForClass)).filter(Boolean).sort();
+
+  useEffect(() => {
+    if (!editingId && uniqueClasses.length > 0 && !formClass) {
+      setFormClass(uniqueClasses[0] as string);
+    }
+  }, [uniqueClasses, formClass, editingId]);
+
+  useEffect(() => {
+    if (!editingId && availableSubjects.length > 0) {
+      if (availableSubjects.length === 1) {
+        setFormSubject(availableSubjects[0] as string);
+      } else if (!availableSubjects.includes(formSubject)) {
+        setFormSubject(availableSubjects[0] as string);
+      }
+    }
+  }, [formClass, availableSubjects, editingId, formSubject]);
   const [formTitle, setFormTitle] = useState('');
   const [formDate, setFormDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [formDriveUrl, setFormDriveUrl] = useState('');
@@ -1431,8 +1494,15 @@ export function PerangkatNgajar() {
 
   const handleOpenAddModal = () => {
     setEditingId(null);
-    setFormSubject(teacherSubjects[0]?.subjectName || 'Matematika');
-    setFormClass(teacherSubjects[0]?.className || 'X IPA 1');
+    if (uniqueClasses.length > 0) {
+      const cls = uniqueClasses[0] as string;
+      setFormClass(cls);
+      const subjs = [
+        ...teacherAssignments.filter(a => a.class_name === cls).map(a => a.subject_name),
+        ...teacherSchedules.filter(s => s.class_name === cls).map(s => s.subject_name)
+      ];
+      if (subjs.length > 0) setFormSubject(subjs[0] as string);
+    }
     setFormTitle('');
     setFormDate(new Date().toISOString().split('T')[0]);
     setFormDriveUrl('');
@@ -1473,7 +1543,7 @@ export function PerangkatNgajar() {
       title: formTitle,
       description: formDescription || 'Modul Ajar harian disematkan melalui Google Drive.',
       file_name: formDriveUrl,
-      status: editingId ? (modulList.find(m => m.id === editingId)?.status || 'Sudah Membuat') : 'Sudah Membuat',
+      status: 'Terbit', // Save as 'Terbit' in DB
       date: formDate,
       objectives: objectivesArray.length > 0 ? objectivesArray : ['Siswa mengikuti pembelajaran sesuai materi harian']
     };
@@ -1483,6 +1553,9 @@ export function PerangkatNgajar() {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+      if (user?.id && !editingId) {
+        await logKinerja(user.id, `Membuat Modul Ajar ${formClass} (${formSubject})`);
+      }
       window.alert(editingId ? 'Modul Ajar berhasil diperbarui!' : 'Modul Ajar berhasil disematkan dan siap dipantau Kepala Madrasah!');
       setIsModalOpen(false);
       fetchModul();
@@ -1699,26 +1772,33 @@ export function PerangkatNgajar() {
             <form onSubmit={handleSaveForm} className="p-4 space-y-3 max-h-[480px] overflow-y-auto text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mata Pelajaran</label>
-                  <input
-                    type="text"
-                    value={formSubject}
-                    onChange={(e) => setFormSubject(e.target.value)}
-                    placeholder="Misal: Matematika"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold"
-                    required
-                  />
-                </div>
-                <div>
                   <label className="block font-bold text-slate-700 mb-1">Kelas</label>
-                  <input
-                    type="text"
+                  <select
                     value={formClass}
                     onChange={(e) => setFormClass(e.target.value)}
-                    placeholder="Misal: X IPA 1"
                     className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold"
                     required
-                  />
+                  >
+                    <option value="" disabled>Pilih Kelas</option>
+                    {uniqueClasses.map((cls, idx) => (
+                      <option key={idx} value={cls as string}>{cls as string}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+                  <select
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value)}
+                    disabled={availableSubjects.length <= 1}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-emerald-500 font-semibold disabled:opacity-70"
+                    required
+                  >
+                    <option value="" disabled>Pilih Mata Pelajaran</option>
+                    {availableSubjects.map((sub, idx) => (
+                      <option key={idx} value={sub as string}>{sub as string}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -2660,12 +2740,27 @@ export function AbsensiZuhur() {
       return;
     }
 
-    const saveAbsen = (msg: string) => {
-        window.alert(msg);
-        remoteStorage.setItem(absensiKey, 'true');
-        setHasAbsen(true);
-        setStatus(null);
-        setReason('');
+    const saveAbsen = async (msg: string) => {
+        try {
+          const payload = {
+            user_id: user?.id,
+            date: new Date().toLocaleDateString('en-CA'),
+            status: status === 'hadir' ? 'Jamaah' : 'Tidak Jamaah',
+            keterangan: status === 'tidak' ? reason : ''
+          };
+          await apiClient('/crud.php?table=ibadah_guru', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          window.alert(msg);
+          remoteStorage.setItem(absensiKey, 'true');
+          setHasAbsen(true);
+          setStatus(null);
+          setReason('');
+        } catch (e) {
+          console.error(e);
+          window.alert('Gagal menyimpan absensi ibadah');
+        }
     };
 
     if (status === 'hadir') {
