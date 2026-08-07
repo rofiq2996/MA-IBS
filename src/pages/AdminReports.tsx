@@ -14,15 +14,31 @@ export function AdminReports() {
   const [students, setStudents] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   
+  const [studentAttendance, setStudentAttendance] = useState<any[]>([]);
+  const [teacherAttendance, setTeacherAttendance] = useState<any[]>([]);
+  const [ibadahGuru, setIbadahGuru] = useState<any[]>([]);
+  const [ibadahSiswa, setIbadahSiswa] = useState<any[]>([]);
+  const [laporanHarian, setLaporanHarian] = useState<any[]>([]);
+
   useEffect(() => {
     Promise.all([
       apiClient('/crud.php?table=classes'),
       apiClient('/crud.php?table=students'),
-      apiClient('/crud.php?table=users')
-    ]).then(([cRes, sRes, uRes]) => {
+      apiClient('/crud.php?table=users'),
+      apiClient('/crud.php?table=student_attendance'),
+      apiClient('/crud.php?table=teacher_attendance'),
+      apiClient('/crud.php?table=ibadah_guru'),
+      apiClient('/crud.php?table=ibadah_siswa'),
+      apiClient('/crud.php?table=laporan_harian')
+    ]).then(([cRes, sRes, uRes, saRes, taRes, igRes, isRes, lhRes]) => {
       setClasses(cRes || []);
       setStudents(sRes || []);
       setUsers(uRes || []);
+      setStudentAttendance(saRes || []);
+      setTeacherAttendance(taRes || []);
+      setIbadahGuru(igRes || []);
+      setIbadahSiswa(isRes || []);
+      setLaporanHarian(lhRes || []);
     }).catch(console.error);
   }, []);
 
@@ -46,69 +62,108 @@ export function AdminReports() {
   const getReportData = () => {
     let headers: string[] = [];
     let rows: any[][] = [];
+    let isGrouped = false;
+    let groups: { className: string, rows: any[][] }[] = [];
     
     // Fallbacks to actual local storage data if mock is empty initially
     let currentStudents = students;
     let currentUsers = users;
     
-
     switch (selectedReportType) {
       case 'absensi_siswa':
-        headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Hadir', 'Izin', 'Sakit', 'Alpa'];
-        rows = currentStudents.map((s, i) => [
-          i + 1,
-          s.nis || '-',
-          s.name || '-',
-          s.className || '-',
-          s.attendance?.present || 0,
-          s.attendance?.permission || 0,
-          s.attendance?.sick || 0,
-          s.attendance?.absent || 0
-        ]);
+        isGrouped = true;
+        headers = ['No', 'NIS', 'Nama Siswa', 'Hadir', 'Izin', 'Sakit', 'Alpa'];
+        classes.forEach(c => {
+           const classRows = currentStudents
+             .filter(s => (s.class_name || s.className || '').trim() === (c.name || '').trim())
+             .map((s, i) => {
+               const studentAtts = studentAttendance.filter(a => a.student_id === s.id);
+               const hadir = studentAtts.filter(a => a.status === 'Hadir').length;
+               const izin = studentAtts.filter(a => a.status === 'Izin').length;
+               const sakit = studentAtts.filter(a => a.status === 'Sakit').length;
+               const alpa = studentAtts.filter(a => a.status === 'Alpa').length;
+               return [
+                 i + 1,
+                 s.nis || '-',
+                 s.name || '-',
+                 hadir,
+                 izin,
+                 sakit,
+                 alpa
+               ];
+             });
+           if (classRows.length > 0) {
+              groups.push({ className: c.name, rows: classRows });
+           }
+        });
         break;
       case 'kinerja_guru':
         headers = ['No', 'NIP', 'Nama Guru', 'Peran', 'Kelas', 'Kehadiran (%)'];
-        rows = currentUsers.filter(u => ['guru', 'walas', 'guru_quran'].includes(u.role)).map((u, i) => [
-          i + 1,
-          (u as any).nip || '-',
-          u.name || '-',
-          u.role.toUpperCase().replace('_', ' '),
-          u.className || '-',
-          Math.floor(Math.random() * 20 + 80) + '%'
-        ]);
+        rows = currentUsers.filter(u => ['guru', 'walas', 'guru_quran'].includes(u.role)).map((u, i) => {
+          const teacherAtts = teacherAttendance.filter(a => a.user_id === u.id);
+          const totalAtt = teacherAtts.length;
+          const hadir = teacherAtts.filter(a => a.status === 'Hadir').length;
+          const percentage = totalAtt > 0 ? Math.round((hadir / totalAtt) * 100) + '%' : '0%';
+          return [
+            i + 1,
+            (u as any).nip || '-',
+            u.name || '-',
+            u.role.toUpperCase().replace('_', ' '),
+            u.className || '-',
+            percentage
+          ];
+        });
         break;
       case 'jurnal_guru':
-        headers = ['No', 'Nama Guru', 'Status Jurnal', 'Persentase Pengisian'];
-        rows = currentUsers.filter(u => ['guru', 'walas'].includes(u.role)).map((u, i) => [
-          i + 1,
-          u.name || '-',
-          'Lengkap',
-          '100%'
-        ]);
+        headers = ['No', 'Nama Guru', 'Jumlah Jurnal', 'Status'];
+        rows = currentUsers.filter(u => ['guru', 'walas'].includes(u.role)).map((u, i) => {
+          const journals = laporanHarian.filter(a => a.user_id === u.id);
+          return [
+            i + 1,
+            u.name || '-',
+            journals.length + ' Entri',
+            journals.length > 0 ? 'Ada Entri' : 'Belum Ada'
+          ];
+        });
         break;
       case 'sholat_pegawai':
-        headers = ['No', 'Nama Pegawai', 'Jabatan', 'Kehadiran Sholat Zuhur'];
-        rows = currentUsers.map((u, i) => [
-          i + 1,
-          u.name || '-',
-          u.role.toUpperCase().replace('_', ' '),
-          Math.floor(Math.random() * 5 + 20) + ' Kali'
-        ]);
+        headers = ['No', 'Nama Pegawai', 'Jabatan', 'Kehadiran Sholat Jamaah'];
+        rows = currentUsers.filter(u => !['ortu', 'siswa'].includes(u.role)).map((u, i) => {
+          const prayers = ibadahGuru.filter(a => a.user_id === u.id && a.status === 'Jamaah');
+          return [
+            i + 1,
+            u.name || '-',
+            u.role.toUpperCase().replace('_', ' '),
+            prayers.length + ' Kali'
+          ];
+        });
         break;
       case 'sholat_siswa':
-        headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Zuhur', 'Dhuha'];
-        rows = currentStudents.map((s, i) => [
-          i + 1,
-          s.nis || '-',
-          s.name || '-',
-          s.className || '-',
-          Math.floor(Math.random() * 5 + 20) + ' Kali',
-          Math.floor(Math.random() * 5 + 20) + ' Kali'
-        ]);
+        isGrouped = true;
+        headers = ['No', 'NIS', 'Nama Siswa', 'Zuhur', 'Dhuha'];
+        classes.forEach(c => {
+           const classRows = currentStudents
+             .filter(s => (s.class_name || s.className || '').trim() === (c.name || '').trim())
+             .map((s, i) => {
+               const studentPrayers = ibadahSiswa.filter(a => a.student_id === s.id && a.status === 'Hadir');
+               const dhuha = studentPrayers.filter(a => a.type === 'Dhuha').length;
+               const zuhur = studentPrayers.filter(a => a.type === 'Zuhur').length;
+               return [
+                 i + 1,
+                 s.nis || '-',
+                 s.name || '-',
+                 zuhur + ' Kali',
+                 dhuha + ' Kali'
+               ];
+             });
+           if (classRows.length > 0) {
+              groups.push({ className: c.name, rows: classRows });
+           }
+        });
         break;
     }
     
-    return { headers, rows };
+    return { headers, rows, isGrouped, groups };
   };
 
   const handleDownload = (format: string) => {
@@ -132,38 +187,81 @@ export function AdminReports() {
     
     const extension = format === 'PDF' ? '.pdf' : '.xlsx';
     const fileName = reportName + extension;
-    const { headers, rows } = getReportData();
+    const { headers, rows, isGrouped, groups } = getReportData();
     
     setTimeout(() => {
       if (format === 'Excel') {
-        const wsData = [
-          ['Laporan', reportName.replace(/_/g, ' ')],
-          ['Semester', selectedSemester],
-          ['Tanggal Mulai', startDate || '-'],
-          ['Tanggal Akhir', endDate || '-'],
-          [],
-          headers,
-          ...rows
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+        
+        if (isGrouped && groups) {
+           groups.forEach(g => {
+              const wsData = [
+                ['Laporan', reportName.replace(/_/g, ' ')],
+                ['Semester', selectedSemester],
+                ['Tanggal Mulai', startDate || '-'],
+                ['Tanggal Akhir', endDate || '-'],
+                ['Kelas', g.className],
+                [],
+                headers,
+                ...g.rows
+              ];
+              const ws = XLSX.utils.aoa_to_sheet(wsData);
+              const safeName = g.className.substring(0, 31).replace(/[\\/?*\[\]]/g, '');
+              XLSX.utils.book_append_sheet(wb, ws, safeName || 'Sheet');
+           });
+        } else {
+          const wsData = [
+            ['Laporan', reportName.replace(/_/g, ' ')],
+            ['Semester', selectedSemester],
+            ['Tanggal Mulai', startDate || '-'],
+            ['Tanggal Akhir', endDate || '-'],
+            [],
+            headers,
+            ...rows
+          ];
+          const ws = XLSX.utils.aoa_to_sheet(wsData);
+          XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+        }
         XLSX.writeFile(wb, fileName);
       } else {
         const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text(reportName.replace(/_/g, ' '), 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Semester: ${selectedSemester}`, 14, 28);
-        if (startDate || endDate) {
-           doc.text(`Periode: ${startDate || '-'} s/d ${endDate || '-'}`, 14, 34);
-        }
         
-        autoTable(doc, {
-          startY: (startDate || endDate) ? 40 : 34,
-          head: [headers],
-          body: rows,
-        });
+        if (isGrouped && groups) {
+           groups.forEach((g, index) => {
+              if (index > 0) doc.addPage();
+              
+              doc.setFontSize(16);
+              doc.text(reportName.replace(/_/g, ' '), 14, 20);
+              doc.setFontSize(11);
+              doc.text(`Semester: ${selectedSemester}`, 14, 28);
+              doc.text(`Kelas: ${g.className}`, 14, 34);
+              let yStart = 40;
+              if (startDate || endDate) {
+                 doc.text(`Periode: ${startDate || '-'} s/d ${endDate || '-'}`, 14, 40);
+                 yStart = 46;
+              }
+              
+              autoTable(doc, {
+                startY: yStart,
+                head: [headers],
+                body: g.rows,
+              });
+           });
+        } else {
+          doc.setFontSize(16);
+          doc.text(reportName.replace(/_/g, ' '), 14, 20);
+          doc.setFontSize(11);
+          doc.text(`Semester: ${selectedSemester}`, 14, 28);
+          if (startDate || endDate) {
+             doc.text(`Periode: ${startDate || '-'} s/d ${endDate || '-'}`, 14, 34);
+          }
+          
+          autoTable(doc, {
+            startY: (startDate || endDate) ? 40 : 34,
+            head: [headers],
+            body: rows,
+          });
+        }
         
         doc.save(fileName);
       }
@@ -188,21 +286,22 @@ export function AdminReports() {
   const totalTeachers = users.filter(u => ['guru', 'guru_quran', 'walas'].includes(u.role)).length;
 
   const classStats = classes.map(c => {
-    const studentsInClass = students.filter(s => s.className === c.name);
+    const studentsInClass = students.filter(s => (s.class_name || s.className || '').trim() === (c.name || '').trim());
     const count = studentsInClass.length;
     
     // Average attendance for class
     let totalPresent = 0;
     let totalDays = 0;
     
-    // Average grade (mocked using behaviorScore for now)
+    // Average grade (mocked using behavior_score or behaviorScore for now)
     let totalScore = 0;
 
     studentsInClass.forEach(s => {
-      const att = s.attendance || { present: 0, absent: 0, sick: 0, permission: 0 };
-      totalPresent += att.present;
-      totalDays += (att.present + att.absent + att.sick + att.permission);
-      totalScore += (s.behaviorScore || 0);
+      const studentAtts = studentAttendance.filter(a => a.student_id === s.id);
+      totalDays += studentAtts.length;
+      totalPresent += studentAtts.filter(a => a.status === 'Hadir').length;
+      
+      totalScore += (s.behavior_score || s.behaviorScore || 0);
     });
 
     const avgGrade = count > 0 ? +(totalScore / count).toFixed(1) : 0;
@@ -302,16 +401,16 @@ export function AdminReports() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* INTERACTIVE EXPORT SECTION */}
-        <Card className="lg:col-span-1 flex flex-col justify-between">
+        <Card className="lg:col-span-1">
           <CardHeader>
             <div className="flex items-center gap-2">
               <span className="w-1 h-4 bg-emerald-500 rounded"></span>
               <CardTitle>Ekspor & Cetak Laporan</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4 flex-1 flex flex-col justify-between">
-            <div className="space-y-3">
-              <p className="text-xs text-slate-500 leading-relaxed">
+          <CardContent className="space-y-3 pt-2">
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 leading-tight">
                 Pilih format dokumen resmi untuk keperluan rapat pengurus, akreditasi, atau laporan tahunan ke yayasan/kemenag.
               </p>
 
@@ -321,9 +420,9 @@ export function AdminReports() {
                   value={selectedReportType}
                   onChange={setSelectedReportType}
                   options={[
-                    { value: 'absensi_siswa', label: 'Absensi Bulanan Siswa' },
+                    { value: 'absensi_siswa', label: 'Absensi Siswa' },
                     { value: 'kinerja_guru', label: 'Kinerja Guru & Walas' },
-                    { value: 'jurnal_guru', label: 'Jurnal Harian Guru & Walas' },
+                    { value: 'jurnal_guru', label: 'Laporan Harian Guru & Walas' },
                     { value: 'sholat_pegawai', label: 'Kehadiran Sholat Pegawai' },
                     { value: 'sholat_siswa', label: 'Laporan Sholat Siswa' },
                   ]}
@@ -350,7 +449,7 @@ export function AdminReports() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex gap-2">
+            <div className="pt-4 border-t border-slate-100 flex gap-2">
               <button
                 onClick={() => setIsPreviewModalOpen(true)}
                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors"
@@ -431,8 +530,41 @@ export function AdminReports() {
                   )}
                 </div>
                 
-                {(() => {
-                  const { headers, rows } = getReportData();
+                                {(() => {
+                  const { headers, rows, isGrouped, groups } = getReportData();
+                  
+                  if (isGrouped && groups) {
+                     return (
+                       <div className="space-y-12 mt-8">
+                         {groups.map((g, index) => (
+                            <div key={index}>
+                               <h4 className="font-bold text-lg text-slate-800 mb-4 border-b border-slate-200 pb-2">Kelas: {g.className}</h4>
+                               <div className="overflow-hidden rounded border border-slate-200">
+                                 <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                                       <tr>
+                                          {headers.map((h, i) => (
+                                            <th key={i} className="p-3 font-bold">{h}</th>
+                                          ))}
+                                       </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                                       {g.rows.map((r, i) => (
+                                         <tr key={i} className="hover:bg-slate-50">
+                                            {r.map((c: any, j: number) => (
+                                              <td key={j} className="p-3 border-b border-slate-100">{c}</td>
+                                            ))}
+                                         </tr>
+                                       ))}
+                                    </tbody>
+                                 </table>
+                               </div>
+                            </div>
+                         ))}
+                       </div>
+                     );
+                  }
+                  
                   return (
                     <div className="mt-8 overflow-hidden rounded border border-slate-200">
                        <table className="w-full text-sm text-left">

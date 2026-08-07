@@ -72,7 +72,7 @@ export function AdminStudents() {
           id: `sync-siswa-${Date.now()}-${index}`,
           name: student.name,
           username: student.nis,
-          password: bcrypt.hashSync('12345', 10),
+          password: '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h',
           role: 'siswa',
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student.name)}`,
         });
@@ -93,7 +93,7 @@ export function AdminStudents() {
               id: `sync-ortu-${Date.now()}-${index}`,
               name: parentName,
               username: expectedParentUsername,
-              password: bcrypt.hashSync('12345', 10),
+              password: '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h',
               role: 'ortu',
               childId: student.id,
               childName: student.name,
@@ -238,7 +238,7 @@ export function AdminStudents() {
              body: JSON.stringify({
                 name: parentName,
                 username: expectedParentUsername,
-                password: bcrypt.hashSync('12345', 10),
+                password: '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h',
                 role: 'ortu',
                 roles: JSON.stringify(['ortu']),
                 child_id: newStudentId,
@@ -253,7 +253,7 @@ export function AdminStudents() {
                 body: JSON.stringify({
                    name: studentName.trim(),
                    username: studentNis.trim(),
-                   password: bcrypt.hashSync(studentPassword || studentNis.trim(), 10),
+                   password: (String(studentPassword || studentNis.trim()) === '12345' ? '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h' : String(studentPassword || studentNis.trim())),
                    role: 'siswa',
                    roles: JSON.stringify(['siswa']),
                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(studentName.trim())}`
@@ -308,7 +308,7 @@ export function AdminStudents() {
                body: JSON.stringify({
                   name: parentName,
                   username: expectedParentUsername,
-                  password: bcrypt.hashSync('12345', 10),
+                  password: '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h',
                   role: 'ortu',
                   roles: JSON.stringify(['ortu']),
                   child_id: student.id,
@@ -320,7 +320,7 @@ export function AdminStudents() {
 
           // Check Siswa (Grade XII only)
           const grade = student.grade || (student.className ? student.className.split(' ')[0] : 'X');
-          if (grade === 'XII') {
+          if (grade === 'XII' || grade === '12') {
              const hasSiswa = users.some(u => u.username === student.nis && u.role === 'siswa');
              if (!hasSiswa) {
                  await apiClient('/crud.php?table=users', {
@@ -328,7 +328,7 @@ export function AdminStudents() {
                     body: JSON.stringify({
                        name: student.name.trim(),
                        username: student.nis.trim(),
-                       password: bcrypt.hashSync(student.nis.trim(), 10),
+                       password: (String(student.nis.trim()) === '12345' ? '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h' : String(student.nis.trim())),
                        role: 'siswa',
                        roles: JSON.stringify(['siswa']),
                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student.name.trim())}`
@@ -377,43 +377,43 @@ export function AdminStudents() {
         const newStudents: Student[] = data.map((row: any, index) => {
           const name = row.Nama || row.nama || '';
           const nis = String(row.NIS || row.nis || '');
-          const className = row.Kelas || row.kelas || '';
+          const className = String(row.Kelas || row.kelas || '');
           const gender = ((row['L/P'] || row.gender || 'L').toString().toUpperCase() === 'P' ? 'P' : 'L') as 'L' | 'P';
           
           if (name && nis) {
              const isXII = className.includes('XII') || className.includes('12');
              const providedPassword = row.Password || row.password || '';
              
-             if (isXII || providedPassword) {
+             if (isXII) {
                newUsers.push({
                  id: String(Date.now() + index * 10 + 10000),
                  name: name,
                  username: nis,
-                 password: bcrypt.hashSync(String(providedPassword || '12345'), 10),
+                 password: (String(providedPassword || '12345') === '12345' ? '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h' : String(providedPassword)),
                  role: 'siswa',
                  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
                });
+               
+               // Auto generate parent account
+               const parentName = 'Ayah/Bunda Ananda ' + name;
+               const baseParentUsername = name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+               let parentUsername = baseParentUsername;
+               let counter = 1;
+               while (users.some(u => u.username === parentUsername) || newUsers.some(u => u.username === parentUsername)) {
+                 parentUsername = `${baseParentUsername}${counter}`;
+                 counter++;
+               }
+               newUsers.push({
+                  id: String(Date.now() + index * 10 + 10001),
+                  name: parentName,
+                  username: parentUsername,
+                  password: '$2a$10$C1VbQ.24G3bT.yNqO.j/s.V47aJ23rO3W.5wA1R8e0.18u3K2h',
+                  role: 'ortu',
+                  childId: String(Date.now() + index),
+                  childName: name,
+                  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(parentName)}`,
+               });
              }
-             
-             // Auto generate parent account
-             const parentName = 'Ayah/Bunda Ananda ' + name;
-             const baseParentUsername = name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-             let parentUsername = baseParentUsername;
-             let counter = 1;
-             while (users.some(u => u.username === parentUsername) || newUsers.some(u => u.username === parentUsername)) {
-               parentUsername = `${baseParentUsername}${counter}`;
-               counter++;
-             }
-             newUsers.push({
-                id: String(Date.now() + index * 10 + 10001),
-                name: parentName,
-                username: parentUsername,
-                password: bcrypt.hashSync('12345', 10),
-                role: 'ortu',
-                childId: String(Date.now() + index),
-                childName: name,
-                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(parentName)}`,
-             });
           }
           
           return {
@@ -430,33 +430,50 @@ export function AdminStudents() {
           (async () => {
              setFeedback({ type: 'info', message: `Mengunggah ${newStudents.length} siswa...` });
              try {
+                let successCount = 0;
+                let userCount = 0;
                 for (const s of newStudents) {
-                   await apiClient('/crud.php?table=students', {
-                      method: 'POST',
-                      body: JSON.stringify({
-                         name: s.name,
-                         nis: s.nis,
-                         class_name: s.className,
-                         gender: s.gender,
-                         behavior_score: 100
-                      }),
-                   });
-                }
-                for (const u of newUsers) {
-                   await apiClient('/crud.php?table=users', {
-                      method: 'POST',
-                      body: JSON.stringify({
-                         name: u.name,
-                         username: u.username,
-                         password: u.password,
-                         role: u.role,
-                         roles: JSON.stringify([u.role]),
-                         avatar: u.avatar
-                      }),
-                   });
+                   try {
+                       const res = await apiClient('/crud.php?table=students', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                             name: s.name,
+                             nis: s.nis,
+                             class_name: s.className,
+                             gender: s.gender,
+                             behavior_score: 100
+                          }),
+                       });
+                       const insertId = res.insertId;
+                       successCount++;
+                       
+                       // Find users for this student
+                       const relatedUsers = newUsers.filter(u => u.username === s.nis || (u as any).childName === s.name);
+                       for (const u of relatedUsers) {
+                          try {
+                              await apiClient('/crud.php?table=users', {
+                                 method: 'POST',
+                                 body: JSON.stringify({
+                                    name: u.name,
+                                    username: u.username,
+                                    password: u.password,
+                                    role: u.role,
+                                    roles: JSON.stringify([u.role]),
+                                    avatar: u.avatar,
+                                    child_id: u.role === 'ortu' ? insertId : null
+                                 }),
+                              });
+                              userCount++;
+                          } catch (e) {
+                              console.warn("Failed to create user", u.username, e);
+                          }
+                       }
+                   } catch (e) {
+                       console.warn("Failed to insert student", s.nis, e);
+                   }
                 }
                 fetchData();
-                setFeedback({ type: 'success', message: `${newStudents.length} siswa diunggah, ${newUsers.length} akun dibuat.` });
+                setFeedback({ type: 'success', message: `${successCount} siswa diunggah, ${userCount} akun dibuat.` });
              } catch (err) {
                 console.error(err);
                 setFeedback({ type: 'error', message: 'Berhasil memproses excel namun gagal menyimpan ke database.' });

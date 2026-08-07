@@ -1,36 +1,88 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/pages/KamadPages.tsx', 'utf8');
+let file = fs.readFileSync('src/pages/GuruPages.tsx', 'utf8');
 
-const tabsBlockRegex = /<div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">[\s\S]*?<\/div>\s*<Card className="overflow-hidden border-slate-200\/60 shadow-sm">/;
-code = code.replace(tabsBlockRegex, '<Card className="overflow-hidden border-slate-200/60 shadow-sm">');
+const oldTabs = `              ) : (
+                <div className={\`grid \${isWalas ? 'grid-cols-2' : 'grid-cols-4'} gap-1 p-1 bg-slate-100 rounded-lg\`}>
+                  <button
+                    type="button"
+                    onClick={() => setReportType('presensi')}
+                    className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                  >
+                    Presensi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportType('nilai')}
+                    className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                  >
+                    {isWalas ? 'Sholat Zuhur' : 'Nilai'}
+                  </button>
+                  {!isWalas && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setReportType('jurnal')}
+                        className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                      >
+                        Jurnal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportType('analisis')}
+                        className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                      >
+                        Analisis
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}`;
 
-const funcIndex = code.indexOf('export function KamadKinerjaStaf');
-if (funcIndex !== -1) {
-  const cardIndex = code.indexOf('<Card className="overflow-hidden border-slate-200/60 shadow-sm">', funcIndex);
-  if (cardIndex !== -1) {
-    const tabsUI = 
-      "      <div className=\"flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide\">\n" +
-      "        {filterOptions.map((opt) => (\n" +
-      "          <button\n" +
-      "            key={opt.value}\n" +
-      "            onClick={() => setActiveTab(opt.value as any)}\n" +
-      "            className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${\n" +
-      "              activeTab === opt.value\n" +
-      "                ? 'bg-emerald-600 text-white shadow-md'\n" +
-      "                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'\n" +
-      "            }`}\n" +
-      "          >\n" +
-      "            {opt.label}\n" +
-      "          </button>\n" +
-      "        ))}\n" +
-      "      </div>\n";
-      
-    const before = code.substring(0, cardIndex);
-    const after = code.substring(cardIndex);
-    code = before + tabsUI + after;
-  }
-}
+const newTabs = `              ) : (
+                <div className="flex flex-col gap-1 p-1 bg-slate-100 rounded-lg">
+                  <div className="grid grid-cols-4 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setReportType('presensi')}
+                      className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                    >
+                      Presensi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('nilai')}
+                      className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                    >
+                      Nilai
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('jurnal')}
+                      className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                    >
+                      Jurnal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('analisis')}
+                      className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                    >
+                      Analisis
+                    </button>
+                  </div>
+                  {isWalas && (
+                    <div className="grid grid-cols-1 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setReportType('sholat_zuhur')}
+                        className={\`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors \${reportType === 'sholat_zuhur' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}\`}
+                      >
+                        Laporan Sholat Zuhur
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}`;
 
-code = code.replace('saveMateriList(updated);', 'setMateriList(updated);');
-
-fs.writeFileSync('src/pages/KamadPages.tsx', code);
+file = file.replace(oldTabs, newTabs);
+fs.writeFileSync('src/pages/GuruPages.tsx', file);

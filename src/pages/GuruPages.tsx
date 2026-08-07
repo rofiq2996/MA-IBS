@@ -1,3 +1,4 @@
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import React, { useState, useEffect } from 'react';
 import { remoteStorage } from '../lib/remoteStorage';
 import { useAuth } from '../context/AuthContext';
@@ -207,7 +208,7 @@ export function JadwalMengajar() {
           // Filter out schedules just for this teacher if not admin/wakakurikulum
           // Wait, if it's admin, they might want to see all. But the page is for 'Guru'.
           // Let's filter by user.id if not admin.
-          const teacherSchedules = canEdit ? data : data.filter((d: any) => String(d.teacher_id) === String(user?.id));
+          const teacherSchedules = data.filter((d: any) => String(d.teacher_id) === String(user?.id));
           
           const mapped = teacherSchedules.map((d: any) => ({
             id: d.id,
@@ -371,6 +372,10 @@ export function Absensi() {
   const [schedulesLoaded, setSchedulesLoaded] = useState(false);
 
   const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+  const [studentAttendance, setStudentAttendance] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [jurnals, setJurnals] = useState<any[]>([]);
+  const [ibadahSiswa, setIbadahSiswa] = useState<any[]>([]);
 
   useEffect(() => {
     apiClient('/crud.php?table=classes').then(data => {
@@ -400,6 +405,22 @@ export function Absensi() {
         setTeachingAssignments(data);
       }
     }).catch(console.error);
+
+    apiClient('/crud.php?table=student_attendance').then(data => {
+      if (Array.isArray(data)) setStudentAttendance(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=grades').then(data => {
+      if (Array.isArray(data)) setGrades(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=laporan_harian').then(data => {
+      if (Array.isArray(data)) setJurnals(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=ibadah_siswa').then(data => {
+      if (Array.isArray(data)) setIbadahSiswa(data);
+    }).catch(console.error);
   }, []);
 
   const isWalasRole = user?.role === 'walas';
@@ -408,7 +429,10 @@ export function Absensi() {
   
   // Ambil data plotting sesuai dengan ID guru
   const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
-  const assignedClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+  const teacherSchedulesAbs = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+  const assignedClassesFromAssignments = teacherAssignments.map((a: any) => a.class_name);
+  const assignedClassesFromSchedules = teacherSchedulesAbs.map((s: any) => s.class_name);
+  const assignedClasses = Array.from(new Set([...assignedClassesFromAssignments, ...assignedClassesFromSchedules])).filter(Boolean) as string[];
   
   let availableClasses = Array.from(new Set([...assignedClasses])).filter(Boolean).sort() as string[];
   
@@ -420,12 +444,13 @@ export function Absensi() {
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedMapel, setSelectedMapel] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (selectedClass && selectedMapel) {
       const storageKey = `attendance_${selectedClass}_${selectedMapel}`;
       const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-      const today = new Date().toISOString().split('T')[0];
+      const today = selectedDate;
       if (existingData[today]) {
         setAttendance(existingData[today]);
         setIsLocked(true);
@@ -441,7 +466,7 @@ export function Absensi() {
         setIsLocked(false);
       }
     }
-  }, [selectedClass, selectedMapel, studentsList]);
+  }, [selectedClass, selectedMapel, studentsList, selectedDate]);
 
   useEffect(() => {
     if (!selectedClass && availableClasses.length > 0) {
@@ -454,7 +479,10 @@ export function Absensi() {
   }, [availableClasses, walasClass, isWalasRole, selectedClass]);
 
   const classAssignments = teacherAssignments.filter((a: any) => a.class_name === selectedClass);
-  const classSubjectsList = Array.from(new Set(classAssignments.map((a: any) => a.subject_name))).filter(Boolean) as string[];
+  const classSchedules = teacherSchedulesAbs.filter((s: any) => s.class_name === selectedClass);
+  const subjectsFromAssignments = classAssignments.map((a: any) => a.subject_name);
+  const subjectsFromSchedules = classSchedules.map((s: any) => s.subject_name);
+  const classSubjectsList = Array.from(new Set([...subjectsFromAssignments, ...subjectsFromSchedules])).filter(Boolean) as string[];
 
   let availableMapel = classSubjectsList;
   const isGuruMode = user?.role === 'guru_mapel' || user?.role === 'guru_quran';
@@ -485,7 +513,7 @@ export function Absensi() {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-  const isLate = currentHour > limitHour || (currentHour === limitHour && currentMinute >= limitMinute);
+  const isLate = (currentHour > limitHour || (currentHour === limitHour && currentMinute >= limitMinute)) && selectedDate === new Date().toISOString().split('T')[0];
 
   if (isLate) {
     return (
@@ -548,9 +576,33 @@ export function Absensi() {
     // Save to remote storage to persist locally
     const storageKey = `attendance_${selectedClass}_${selectedMapel}`;
     const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-    const today = new Date().toISOString().split('T')[0];
+    const today = selectedDate;
     existingData[today] = attendance;
     remoteStorage.setItem(storageKey, JSON.stringify(existingData));
+    
+    // Save to database
+    try {
+       await apiClient('/query.php', {
+          method: 'POST',
+          body: JSON.stringify({ query: `DELETE FROM student_attendance WHERE class_name = '${selectedClass}' AND subject_name = '${selectedMapel}' AND date = '${today}'` })
+       });
+       await Promise.all(Object.entries(attendance).map(async ([studentId, data]: [string, any]) => {
+          if (!data.status) return;
+          const payload = {
+             student_id: studentId,
+             class_name: selectedClass,
+             subject_name: selectedMapel,
+             date: today,
+             status: data.status,
+             notes: data.ket || ''
+          };
+          await apiClient('/crud.php?table=student_attendance', {
+             method: 'POST',
+             body: JSON.stringify(payload)
+          });
+       }));
+    } catch(e) { console.error('Failed to save to database', e); }
+    
     setIsLocked(true);
     
     if (user?.id) {
@@ -596,8 +648,16 @@ export function Absensi() {
             <h2 className="text-lg font-bold text-slate-800">Absensi Kehadiran</h2>
             <p className="text-sm text-slate-500 mt-0.5">Masukkan data kehadiran siswa</p>
           </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full md:w-auto">
+            <div className="w-full md:w-[150px]">
+              <input
+                type="date"
+                max={new Date().toISOString().split('T')[0]}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500 font-bold text-slate-700"
+              />
+            </div>
               {/* Kelas & Mapel Side-by-Side on HP */}
               <div className="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-3">
                 <div className="w-full md:w-[150px]">
@@ -781,7 +841,10 @@ export function InputNilai() {
   }, []);
 
   const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
-  const assignedClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+  const teacherSchedulesNilai = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+  const classesFromAssign = teacherAssignments.map((a: any) => a.class_name);
+  const classesFromSched = teacherSchedulesNilai.map((s: any) => s.class_name);
+  const assignedClasses = Array.from(new Set([...classesFromAssign, ...classesFromSched])).filter(Boolean) as string[];
   
   let availableClasses = Array.from(new Set([...assignedClasses])).sort() as string[];
 
@@ -828,7 +891,7 @@ export function InputNilai() {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedClass) {
       window.alert("Pilih kelas terlebih dahulu!");
       return;
@@ -839,6 +902,67 @@ export function InputNilai() {
     }
     const storageKey = `grades_${selectedClass}_${selectedMapel}`;
     remoteStorage.setItem(storageKey, JSON.stringify(grades));
+    
+    try {
+      await apiClient('/query.php', {
+        method: 'POST',
+        body: JSON.stringify({ query: `DELETE FROM grades WHERE class_name = '${selectedClass}' AND subject_name = '${selectedMapel}' AND semester = '${semester}'` })
+      });
+      
+      await Promise.all(Object.entries(grades).map(async ([studentId, data]) => {
+         // Insert UHs
+         for (let i = 1; i <= uhCount; i++) {
+           const uhVal = (data as any)[`uh${i}`];
+           if (uhVal) {
+             await apiClient('/crud.php?table=grades', {
+               method: 'POST',
+               body: JSON.stringify({
+                 student_id: studentId,
+                 subject_name: selectedMapel,
+                 class_name: selectedClass,
+                 academic_year: '2026/2027',
+                 semester: semester,
+                 type: 'UH',
+                 score: Number(uhVal)
+               })
+             });
+           }
+         }
+         
+         const utsVal = (data as any).uts;
+         if (utsVal) {
+             await apiClient('/crud.php?table=grades', {
+               method: 'POST',
+               body: JSON.stringify({
+                 student_id: studentId,
+                 subject_name: selectedMapel,
+                 class_name: selectedClass,
+                 academic_year: '2026/2027',
+                 semester: semester,
+                 type: 'UTS',
+                 score: Number(utsVal)
+               })
+             });
+         }
+
+         const uasVal = (data as any).uas;
+         if (uasVal) {
+             await apiClient('/crud.php?table=grades', {
+               method: 'POST',
+               body: JSON.stringify({
+                 student_id: studentId,
+                 subject_name: selectedMapel,
+                 class_name: selectedClass,
+                 academic_year: '2026/2027',
+                 semester: semester,
+                 type: 'UAS',
+                 score: Number(uasVal)
+               })
+             });
+         }
+      }));
+    } catch(e) { console.error('Failed to save to database', e); }
+    
     setIsLocked(true);
     window.alert("Nilai berhasil disimpan!");
   };
@@ -1027,9 +1151,12 @@ export function JurnalMengajar() {
   }, []);
 
   const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
   
   // Combine schedules and subjects
-  const allPairs = Array.from(new Set(teacherAssignments.map(s => `${s.subject_name} - ${s.class_name}`))).filter(Boolean).sort();
+  const pairsFromAssignments = teacherAssignments.map(a => `${a.subject_name} - ${a.class_name}`);
+  const pairsFromSchedules = teacherSchedules.map(s => `${s.subject_name} - ${s.class_name}`);
+  const allPairs = Array.from(new Set([...pairsFromAssignments, ...pairsFromSchedules])).filter(Boolean).sort();
   
   const options = (allPairs as string[]).map(p => ({
     value: p,
@@ -1098,6 +1225,24 @@ export function JurnalMengajar() {
       };
       
       saveToStorage([newJurnal, ...jurnals]);
+      
+      try {
+        await apiClient('/crud.php?table=laporan_harian', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: user?.id,
+            role: user?.role,
+            date: tanggal,
+            activity: JSON.stringify({
+               class: kelas,
+               subject: mapel,
+               materi: materi,
+               catatan: catatan
+            })
+          })
+        });
+      } catch(e) { console.error('Failed saving to laporan_harian', e); }
+
       setToastMessage("Jurnal mengajar berhasil disimpan!");
     }
     
@@ -1152,8 +1297,7 @@ export function JurnalMengajar() {
             setMateri('');
             setCatatan('');
             setTanggal(new Date().toISOString().split('T')[0]);
-            setIsModalOpen(true);
-          }}
+            setIsModalOpen(true); }}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" /> Tambah
@@ -1218,7 +1362,8 @@ export function JurnalMengajar() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tanggal</label>
                 <input 
-                  type="date" 
+                  type="date"
+                max={new Date().toISOString().split('T')[0]} 
                   value={tanggal}
                   onChange={e => setTanggal(e.target.value)}
                   className="w-full p-2 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 bg-slate-50 text-sm mb-4" 
@@ -1896,14 +2041,65 @@ export function PerangkatNgajar() {
 }
 
 export function AnalisisSiswa() {
+  const { user } = useAuth();
+  const [grades, setGrades] = useState<any[]>([]);
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiClient('/crud.php?table=grades').then(data => {
+      if (Array.isArray(data)) setGrades(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=teaching_assignments').then(data => {
+      if (Array.isArray(data)) setTeachingAssignments(data);
+    }).catch(console.error);
+  }, []);
+
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
+  const assignedClasses = Array.from(new Set(teacherAssignments.map(a => a.class_name))).filter(Boolean) as string[];
+
+  // Prepare data for chart: average UH, UTS, UAS per class
+  const chartData = assignedClasses.map(cls => {
+    const classGrades = grades.filter(g => g.class_name === cls);
+    const uhGrades = classGrades.filter(g => g.type === 'UH').map(g => Number(g.score));
+    const utsGrades = classGrades.filter(g => g.type === 'UTS').map(g => Number(g.score));
+    const uasGrades = classGrades.filter(g => g.type === 'UAS').map(g => Number(g.score));
+
+    return {
+      name: cls,
+      UH: uhGrades.length ? Math.round(uhGrades.reduce((a,b)=>a+b,0)/uhGrades.length) : 0,
+      UTS: utsGrades.length ? Math.round(utsGrades.reduce((a,b)=>a+b,0)/utsGrades.length) : 0,
+      UAS: uasGrades.length ? Math.round(uasGrades.reduce((a,b)=>a+b,0)/uasGrades.length) : 0,
+    };
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold tracking-tight text-slate-800">Analisis Siswa</h1>
       <Card>
-        <CardHeader><CardTitle>Grafik Perkembangan Nilai</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Grafik Perkembangan Nilai Rata-rata per Kelas</CardTitle></CardHeader>
         <CardContent>
-          <div className="h-48 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center">
-            <span className="text-slate-400 font-medium">Grafik akan ditampilkan di sini (Integrasi Recharts)</span>
+          <div className="h-80 bg-white border border-slate-200 rounded-lg p-4">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <RechartsTooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar dataKey="UH" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="UTS" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="UAS" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400 font-medium">
+                Belum ada data nilai untuk kelas yang diajarkan.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1917,6 +2113,11 @@ export function Laporan() {
   
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
+  const [studentAttendance, setStudentAttendance] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
+  const [jurnals, setJurnals] = useState<any[]>([]);
+  const [ibadahSiswa, setIbadahSiswa] = useState<any[]>([]);
   
   useEffect(() => {
     apiClient('/crud.php?table=students').then(data => {
@@ -1930,6 +2131,28 @@ export function Laporan() {
         setSchedules(data);
       }
     }).catch(console.error);
+
+    apiClient('/crud.php?table=teaching_assignments').then(data => {
+      if (Array.isArray(data)) {
+        setTeachingAssignments(data);
+      }
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=student_attendance').then(data => {
+      if (Array.isArray(data)) setStudentAttendance(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=grades').then(data => {
+      if (Array.isArray(data)) setGrades(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=laporan_harian').then(data => {
+      if (Array.isArray(data)) setJurnals(data);
+    }).catch(console.error);
+
+    apiClient('/crud.php?table=ibadah_siswa').then(data => {
+      if (Array.isArray(data)) setIbadahSiswa(data);
+    }).catch(console.error);
   }, []);
 
   const isWalas = user?.role === 'walas';
@@ -1937,11 +2160,13 @@ export function Laporan() {
   const walasClass = user?.className || user?.class_name;
   
   const teacherSchedules = schedules.filter((s: any) => String(s.teacher_id) === String(user?.id));
+  const teacherAssignments = teachingAssignments.filter((a: any) => String(a.teacher_id) === String(user?.id));
   const scheduledClasses = Array.from(new Set(teacherSchedules.map((s: any) => s.class_name))).filter(Boolean) as string[];
-  const subjectClasses = Array.from(new Set(subjects.map((s: any) => s.className))).filter(Boolean) as string[];
+  const assignedClasses = Array.from(new Set(teacherAssignments.map((a: any) => a.class_name))).filter(Boolean) as string[];
+  const subjectClasses = Array.from(new Set([...assignedClasses])).filter(Boolean) as string[];
 
   // State for form selection
-  const [reportType, setReportType] = useState<'presensi' | 'nilai' | 'jurnal' | 'analisis' | 'sholat_dhuha'>('presensi');
+  const [reportType, setReportType] = useState<'presensi' | 'nilai' | 'jurnal' | 'analisis' | 'sholat_dhuha' | 'sholat_zuhur'>('presensi');
   
   // Available classes based on teacher's schedules and subjects
   const availableClasses = Array.from(new Set([
@@ -1965,9 +2190,12 @@ export function Laporan() {
 
   // Filter available subjects based on selected class
   const classSchedules = teacherSchedules.filter(s => s.class_name === selectedClass);
-  const classSubjectsList = classSchedules.length > 0
-    ? Array.from(new Set(classSchedules.map(s => s.subject_name))).filter(Boolean) as string[]
-    : Array.from(new Set(subjects.filter((s: any) => s.className === selectedClass).map((s: any) => s.subjectName))).filter(Boolean) as string[];
+  const classAssignments = teacherAssignments.filter((a: any) => a.class_name === selectedClass);
+  const classSubjectsList = Array.from(new Set([
+    ...classSchedules.map(s => s.subject_name),
+    ...classAssignments.map(a => a.subject_name),
+    ...subjects.filter((s: any) => s.className === selectedClass).map((s: any) => s.subjectName)
+  ])).filter(Boolean) as string[];
 
   const isGuruMode = user?.role === 'guru_mapel' || user?.role === 'guru_quran';
   const showWalasPresensi = isWalas && selectedClass === walasClass && !isGuruMode;
@@ -2017,19 +2245,13 @@ export function Laporan() {
     const targetStudents = classStudents.length > 0 ? classStudents : (mockClassStudents.length > 0 ? mockClassStudents : mockStudents);
 
     if (reportType === 'presensi') {
-      const storageKey = `attendance_${selectedClass}_${selectedSubject}`;
-      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-      
       return targetStudents.map((s, idx) => {
-        let present = s.attendance?.present || 0;
-        let sick = s.attendance?.sick || 0;
-        let permission = s.attendance?.permission || 0;
-        let absent = s.attendance?.absent || 0;
-        let cabut = s.attendance?.cabut || 0;
-
-        // Aggregate local storage data for this student
-        Object.values(savedData).forEach((dailyData: any) => {
-          const status = dailyData[s.id]?.status;
+        let present = 0; let sick = 0; let permission = 0; let absent = 0; let cabut = 0;
+        
+        const studentAtt = studentAttendance.filter(a => String(a.student_id) === String(s.id) && a.class_name === selectedClass && a.subject_name === selectedSubject);
+        
+        studentAtt.forEach((dailyData: any) => {
+          const status = dailyData.status;
           if (status === 'Hadir') present++;
           else if (status === 'Sakit') sick++;
           else if (status === 'Izin') permission++;
@@ -2079,57 +2301,52 @@ export function Laporan() {
         });
       }
 
-      const storageKey = `grades_${selectedClass}_${selectedSubject}`;
-      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-
-      return targetStudents.map((s, idx) => {
-        let uhSum = 0;
-        let uhCount = 0;
-        for (let i = 1; i <= 5; i++) {
-          const val = savedData[s.id]?.[`uh${i}`];
-          if (val) {
-            uhSum += Number(val);
-            uhCount++;
-          }
-        }
+            return targetStudents.map((s, idx) => {
+        const studentGrades = grades.filter(g => String(g.student_id) === String(s.id) && g.class_name === selectedClass && g.subject_name === selectedSubject);
         
-        // Calculate average UH if available, otherwise 0 or pseudo random if we wanted to fallback but we want real data now.
-        // Let's use 0 if no data
-        const tugas = uhCount > 0 ? Math.round(uhSum / uhCount) : 0;
-        const uts = Number(savedData[s.id]?.uts || 0);
-        const uas = Number(savedData[s.id]?.uas || 0);
+                const uhs = studentGrades.filter(g => g.type === 'UH').map(g => Number(g.score));
+        let uts = 0;
+        let uas = 0;
+        studentGrades.forEach(g => {
+          if (g.type === 'UTS') {
+             uts = Number(g.score);
+          } else if (g.type === 'UAS') {
+             uas = Number(g.score);
+          }
+        });
+        
+        const tugas = uhs.length > 0 ? Math.round(uhs.reduce((a,b) => a+b, 0) / uhs.length) : 0;
         
         let akhir = 0;
         if (tugas || uts || uas) {
            akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
         }
         
-        const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
-        
         return {
           no: idx + 1,
           nama: s.name,
           nis: s.nis,
-          tugas: tugas || '-',
+          uh1: uhs[0] || '-',
+          uh2: uhs[1] || '-',
+          uh3: uhs[2] || '-',
+          uh4: uhs[3] || '-',
+          uh5: uhs[4] || '-',
           uts: uts || '-',
           uas: uas || '-',
           akhir: akhir || '-',
-          predikat: akhir ? predikat : '-',
-          ket: akhir >= 75 ? "Lulus" : (akhir > 0 ? "Remedial" : "-")
+          uhCount: uhs.length
         };
       });
-    } else if (reportType === 'sholat_dhuha') {
-      const storageKey = `dhuha_${selectedClass}`;
-      const savedData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-      
+    } else if (reportType === 'sholat_dhuha' || reportType === 'sholat_zuhur') {
+      const type = reportType === 'sholat_dhuha' ? 'Dhuha' : 'Zuhur';
       return targetStudents.map((s, idx) => {
         let jamaah = 0;
         let tidak = 0;
         
-        Object.values(savedData).forEach((dailyData: any) => {
-          const status = dailyData[s.id]?.status;
-          if (status === 'Jamaah') jamaah++;
-          else if (status === 'Tidak Jamaah' || status === 'Tidak') tidak++;
+        const studentIbadah = ibadahSiswa.filter(i => String(i.student_id) === String(s.id) && i.class_name === selectedClass && i.type === type);
+        studentIbadah.forEach(i => {
+           if (i.status === 'Hadir' || i.status === 'Jamaah') jamaah++;
+           else tidak++;
         });
         
         const total = jamaah + tidak || 1;
@@ -2163,18 +2380,37 @@ export function Laporan() {
       }));
     } else {
       return targetStudents.map((s, idx) => {
-        const charCodeSum = (s.name || '').split('').reduce((acc: number, curr: string) => acc + curr.charCodeAt(0), 0);
-        const awal = (charCodeSum % 10) + 65; // 65-75
-        const akhir = ((charCodeSum * 3) % 15) + 80; // 80-95
+        const studentGrades = grades.filter(g => String(g.student_id) === String(s.id) && g.class_name === selectedClass && g.subject_name === selectedSubject);
+        
+        let uhSum = 0;
+        let uhCount = 0;
+        let uts = 0;
+        let uas = 0;
+
+        studentGrades.forEach(g => {
+          if (g.type === 'UH') {
+             uhSum += Number(g.score);
+             uhCount++;
+          } else if (g.type === 'UTS') {
+             uts = Number(g.score);
+          } else if (g.type === 'UAS') {
+             uas = Number(g.score);
+          }
+        });
+        
+        const tugas = uhCount > 0 ? Math.round(uhSum / uhCount) : 0;
+        const awal = Math.round((tugas + uts) / 2) || 0;
+        const akhir = uas || 0;
         const peningkat = akhir - awal;
+        
         return {
           no: idx + 1,
           nama: s.name,
           nis: s.nis,
-          awal,
-          akhir,
-          peningkatan: `+${peningkat}`,
-          status: peningkat > 10 ? "Sangat Baik" : "Baik"
+          awal: awal || '-',
+          akhir: akhir || '-',
+          peningkatan: peningkat > 0 ? `+${peningkat}` : peningkat,
+          status: peningkat > 10 ? "Sangat Baik" : (peningkat >= 0 ? "Baik" : "Perlu Bimbingan")
         };
       });
     }
@@ -2196,8 +2432,6 @@ export function Laporan() {
         "No": row.no,
         "Nama Siswa": row.nama,
         "NIS": row.nis,
-        "Kelas": selectedClass,
-        "Mata Pelajaran": selectedSubject,
         "Hadir (Hari)": row.hadir,
         "Sakit (Hari)": row.sakit,
         "Izin (Hari)": row.izin,
@@ -2205,90 +2439,52 @@ export function Laporan() {
         "Cabut (Hari)": row.cabut,
         "Persentase Kehadiran": row.persentase
       }));
-    } else if (reportType === 'nilai') {
-      if (isWalas) {
-        sheetName = "Laporan Sholat Zuhur";
-        dataToExport = previewRows.map(row => ({
-          "No": row.no,
-          "Nama Siswa": row.nama,
-          "NIS": row.nis,
-          "Kelas": selectedClass,
-          "Jamaah": row.jamaah,
-          "Tidak Jamaah": row.tidak,
-          "Persentase": row.persentase
-        }));
-      } else {
-        sheetName = "Leger Nilai";
-        dataToExport = targetStudents.map((s, idx) => {
-          const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
-          const tugas = (charCodeSum % 20) + 75;
-          const uts = ((charCodeSum * 2) % 25) + 70;
-          const uas = ((charCodeSum * 3) % 25) + 70;
-          const akhir = Math.round((tugas * 0.4) + (uts * 0.3) + (uas * 0.3));
-          const predikat = akhir >= 90 ? 'A' : akhir >= 80 ? 'B' : akhir >= 70 ? 'C' : 'D';
-          return {
-            "No": idx + 1,
-            "Nama Siswa": s.name,
-            "NIS": s.nis,
-            "Kelas": s.className,
-            "Mata Pelajaran": selectedSubject,
-            "Nilai Tugas (40%)": tugas,
-            "Nilai UTS (30%)": uts,
-            "Nilai UAS (30%)": uas,
-            "Nilai Akhir": akhir,
-            "Predikat": predikat,
-            "Keterangan": akhir >= 75 ? "Lulus KKM" : "Remedial"
+        } else if (reportType === 'nilai') {
+      sheetName = "Leger Nilai";
+        const maxUh = Math.max(1, ...previewRows.map((r: any) => r.uhCount || 0));
+        dataToExport = previewRows.map(row => {
+          const base: any = {
+            "No": row.no,
+            "Nama Siswa": row.nama,
+            "NIS": row.nis
           };
+          for (let i = 1; i <= maxUh; i++) {
+            base[`UH ${i}`] = row[`uh${i}`];
+          }
+          base["Nilai STS"] = row.uts;
+          base["Nilai SAS"] = row.uas;
+          base["Nilai Akhir"] = row.akhir;
+          return base;
         });
-      }
-    } else if (reportType === 'sholat_dhuha') {
-      sheetName = "Laporan Sholat Dhuha";
+    } else if (reportType === 'sholat_dhuha' || reportType === 'sholat_zuhur') {
+      sheetName = reportType === 'sholat_dhuha' ? "Laporan Sholat Dhuha" : "Laporan Sholat Zuhur";
       dataToExport = previewRows.map(row => ({
         "No": row.no,
         "Nama Siswa": row.nama,
         "NIS": row.nis,
-        "Kelas": selectedClass,
         "Jamaah": row.jamaah,
         "Tidak Jamaah": row.tidak,
         "Persentase": row.persentase
       }));
     } else if (reportType === 'jurnal') {
       sheetName = "Jurnal Mengajar";
-      const savedJurnals = JSON.parse(remoteStorage.getItem('jurnals') || '[]');
-      let filteredJurnals = savedJurnals;
-      if (selectedClass) {
-        filteredJurnals = filteredJurnals.filter((j: any) => j.kelas === selectedClass);
-      }
-      if (selectedSubject && selectedSubject !== 'Semua Mata Pelajaran' && selectedSubject !== 'Presensi Wali Kelas') {
-        filteredJurnals = filteredJurnals.filter((j: any) => j.mataPelajaran === selectedSubject);
-      }
-      dataToExport = filteredJurnals.map((j: any, idx: number) => ({
-        "No": idx + 1,
-        "Tanggal": j.tanggal,
-        "Kelas": j.kelas,
-        "Mata Pelajaran": j.mataPelajaran,
-        "Materi Pokok": j.materi,
-        "Catatan KBM": j.catatan
+      dataToExport = previewRows.map((row: any) => ({
+        "No": row.no,
+        "Tanggal": row.tanggal,
+        "Materi Pokok": row.materi,
+        "Catatan KBM": row.catatan
       }));
     } else {
       sheetName = "Analisis Siswa";
-      dataToExport = targetStudents.map((s, idx) => {
-        const charCodeSum = s.name.split('').reduce((acc, curr) => acc + curr.charCodeAt(0), 0);
-        const awal = (charCodeSum % 10) + 65;
-        const akhir = ((charCodeSum * 3) % 15) + 80;
-        const peningkat = akhir - awal;
-        return {
-          "No": idx + 1,
-          "Nama Siswa": s.name,
-          "NIS": s.nis,
-          "Kelas": s.className,
-          "Mata Pelajaran": selectedSubject,
-          "Nilai Awal (Pre-test)": awal,
-          "Nilai Akhir (Post-test)": akhir,
-          "Peningkatan": `+${peningkat}`,
-          "Status Perkembangan": peningkat > 10 ? "Sangat Baik" : "Baik"
-        };
-      });
+      dataToExport = previewRows.map(row => ({
+        "No": row.no,
+        "Nama Siswa": row.nama,
+        "NIS": row.nis,
+        "Nilai Awal (Pre-test)": row.awal,
+        "Nilai Akhir (Post-test)": row.akhir,
+        "Peningkatan": row.peningkatan,
+        "Status Perkembangan": row.status
+      }));
     }
 
     if (format === 'excel') {
@@ -2395,38 +2591,47 @@ export function Laporan() {
                   </div>
                 </div>
               ) : (
-                <div className={`grid ${isWalas ? 'grid-cols-2' : 'grid-cols-4'} gap-1 p-1 bg-slate-100 rounded-lg`}>
-                  <button
-                    type="button"
-                    onClick={() => setReportType('presensi')}
-                    className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Presensi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReportType('nilai')}
-                    className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    {isWalas ? 'Sholat Zuhur' : 'Nilai'}
-                  </button>
-                  {!isWalas && (
-                    <>
+                <div className="flex flex-col gap-1 p-1 bg-slate-100 rounded-lg">
+                  <div className="grid grid-cols-4 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setReportType('presensi')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'presensi' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Presensi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('nilai')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Nilai
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('jurnal')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Jurnal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReportType('analisis')}
+                      className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      Analisis
+                    </button>
+                  </div>
+                  {isWalas && (
+                    <div className="grid grid-cols-1 gap-1">
                       <button
                         type="button"
-                        onClick={() => setReportType('jurnal')}
-                        className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'jurnal' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                        onClick={() => setReportType('sholat_zuhur')}
+                        className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'sholat_zuhur' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                       >
-                        Jurnal
+                        Laporan Sholat Zuhur
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setReportType('analisis')}
-                        className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-tight transition-colors ${reportType === 'analisis' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                      >
-                        Analisis
-                      </button>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
@@ -2573,12 +2778,12 @@ export function Laporan() {
                         </>
                       ) : (
                         <>
-                          <th className="py-3 px-4 text-center">Tugas</th>
-                          <th className="py-3 px-4 text-center">UTS</th>
-                          <th className="py-3 px-4 text-center">UAS</th>
+                          {Array.from({ length: Math.max(1, ...previewRows.map((r: any) => r.uhCount || 0)) }).map((_, i) => (
+                            <th key={i} className="py-3 px-4 text-center">UH {i + 1}</th>
+                          ))}
+                          <th className="py-3 px-4 text-center">STS</th>
+                          <th className="py-3 px-4 text-center">SAS</th>
                           <th className="py-3 px-4 text-center">Akhir</th>
-                          <th className="py-3 px-4 text-center">Grade</th>
-                          <th className="py-3 px-4 text-right">Ket.</th>
                         </>
                       )}
                     </tr>
@@ -2597,16 +2802,12 @@ export function Laporan() {
                           </>
                         ) : (
                           <>
-                            <td className="py-3 px-4 text-center font-mono">{row.tugas}</td>
+                            {Array.from({ length: Math.max(1, ...previewRows.map((r: any) => r.uhCount || 0)) }).map((_, i) => (
+                              <td key={i} className="py-3 px-4 text-center font-mono">{row[`uh${i+1}`]}</td>
+                            ))}
                             <td className="py-3 px-4 text-center font-mono">{row.uts}</td>
                             <td className="py-3 px-4 text-center font-mono">{row.uas}</td>
                             <td className="py-3 px-4 text-center font-bold font-mono text-emerald-700 bg-emerald-50/30">{row.akhir}</td>
-                            <td className="py-3 px-4 text-center font-bold text-slate-800">{row.predikat}</td>
-                            <td className="py-3 px-4 text-right font-bold text-slate-600">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${row.ket === 'Lulus' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                {row.ket}
-                              </span>
-                            </td>
                           </>
                         )}
                       </tr>

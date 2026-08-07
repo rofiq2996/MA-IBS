@@ -85,6 +85,7 @@ export function GuruQuranAbsensiDhuha() {
   const [attendance, setAttendance] = useState<Record<string, { status: string; ket: string }>>({});
   const [isLocked, setIsLocked] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<any[]>([]);
   const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
   
@@ -111,7 +112,7 @@ export function GuruQuranAbsensiDhuha() {
     if (selectedClass) {
       const storageKey = `dhuha_${selectedClass}`;
       const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-      const today = new Date().toISOString().split('T')[0];
+      const today = selectedDate;
       if (existingData[today]) {
         setAttendance(existingData[today]);
         setIsLocked(true);
@@ -125,7 +126,7 @@ export function GuruQuranAbsensiDhuha() {
         setIsLocked(false);
       }
     }
-  }, [selectedClass, students]);
+  }, [selectedClass, students, selectedDate]);
 
   const handleSetStatus = (id: string, status: string) => {
     if (isLocked) return;
@@ -149,10 +150,33 @@ export function GuruQuranAbsensiDhuha() {
       return;
     }
     const storageKey = `dhuha_${selectedClass}`;
-    const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
-    const today = new Date().toISOString().split('T')[0];
+      const existingData = JSON.parse(remoteStorage.getItem(storageKey) || '{}');
+      const today = selectedDate;
     existingData[today] = attendance;
     remoteStorage.setItem(storageKey, JSON.stringify(existingData));
+    
+    try {
+      await apiClient('/query.php', {
+        method: 'POST',
+        body: JSON.stringify({ query: `DELETE FROM ibadah_siswa WHERE class_name = '${selectedClass}' AND type = 'Dhuha' AND date = '${today}'` })
+      });
+      
+      await Promise.all(Object.entries(attendance).map(async ([studentId, data]: [string, any]) => {
+         if (!data.status) return;
+         await apiClient('/crud.php?table=ibadah_siswa', {
+           method: 'POST',
+           body: JSON.stringify({
+             student_id: studentId,
+             class_name: selectedClass,
+             date: today,
+             type: 'Dhuha',
+             status: data.status,
+             notes: data.ket || ''
+           })
+         });
+      }));
+    } catch(e) { console.error('Failed to save to database', e); }
+    
     setIsLocked(true);
     if (user?.id) {
       await logKinerja(user.id, 'Mengabsen siswa sholat Dhuha');
@@ -174,6 +198,15 @@ export function GuruQuranAbsensiDhuha() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="w-[150px]">
+              <input
+                type="date"
+                max={new Date().toISOString().split('T')[0]}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm font-bold text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
             <div className="w-[150px]">
               <CustomSelect
                 value={selectedClass}

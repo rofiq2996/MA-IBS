@@ -14,6 +14,16 @@ export function AdminRombel() {
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [searchAvailable, setSearchAvailable] = useState('');
   const [searchInClass, setSearchInClass] = useState('');
+  const normalizeGrade = (g: string) => {
+    if (!g) return '';
+    let str = g.toUpperCase().trim();
+    if (str.startsWith('XII') || str.startsWith('12')) return 'XII';
+    if (str.startsWith('XI') || str.startsWith('11')) return 'XI';
+    if (str.startsWith('X') || str.startsWith('10')) return 'X';
+    return str.split(' ')[0];
+  };
+
+
 
     const fetchData = async () => {
     try {
@@ -27,7 +37,7 @@ export function AdminRombel() {
           nis: s.nis,
           className: s.class_name,
           gender: s.gender,
-          grade: s.class_name ? s.class_name.split(' ')[0] : 'X'
+          grade: normalizeGrade(s.class_name || 'X')
        })));
        setClasses(classesData.map((c:any) => ({ name: c.name })));
     } catch (e) {
@@ -44,7 +54,7 @@ export function AdminRombel() {
   
   // Filter for available students: They must not be in the selected class. 
   // It might be useful to only show students who are in the same grade as the class.
-  const classGrade = selectedClass ? selectedClass.split(' ')[0] : '';
+  const classGrade = normalizeGrade(selectedClass);
   
   const isAssignedToAnyClass = (className) => {
     return classes.some(c => c.name === className);

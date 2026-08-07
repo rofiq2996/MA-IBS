@@ -47,8 +47,18 @@ export function DashboardGuru() {
 
         const assignmentsData = await apiClient('/crud.php?table=teaching_assignments');
         let myClasses: string[] = [];
+        
+        let schedClasses = [];
+        if (Array.isArray(data)) {
+           schedClasses = data.filter((d: any) => String(d.teacher_id) === String(user?.id)).map(d => d.class_name);
+        }
+        
         if (Array.isArray(assignmentsData)) {
-           myClasses = Array.from(new Set(assignmentsData.filter(a => String(a.teacher_id) === String(user?.id)).map(a => a.class_name)));
+           const assignClasses = assignmentsData.filter(a => String(a.teacher_id) === String(user?.id)).map(a => a.class_name);
+           myClasses = Array.from(new Set([...assignClasses, ...schedClasses])).filter(Boolean) as string[];
+           setTeacherClasses(myClasses);
+        } else {
+           myClasses = Array.from(new Set(schedClasses)).filter(Boolean) as string[];
            setTeacherClasses(myClasses);
         }
 
