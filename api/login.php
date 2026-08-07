@@ -15,7 +15,7 @@ try {
 $data = json_decode(file_get_contents("php://input"));
 
 if (!empty($data->username) && !empty($data->password)) {
-    $query = "SELECT id, username, name, role, roles, avatar, password FROM users WHERE username = :username LIMIT 1";
+    $query = "SELECT id, username, name, role, roles, avatar, gender, password FROM users WHERE username = :username LIMIT 1";
     $stmt = $conn->prepare($query);
     $stmt->bindParam(':username', $data->username);
     $stmt->execute();
@@ -53,6 +53,7 @@ if (!empty($data->username) && !empty($data->password)) {
                     "name" => $row['name'],
                     "role" => $row['role'],
                     "roles" => $roles,
+                    "gender" => $row['gender'],
                     "avatar" => $row['avatar']
                 ]
             ]);

@@ -26,21 +26,16 @@ export function Perizinan() {
 
   const fetchRequests = () => {
     setLoading(true);
-    apiClient('/query.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        query: `
-          SELECT * FROM leave_requests 
-          WHERE user_id = ${user?.id}
-          ORDER BY created_at DESC
-        `
+    apiClient('/crud.php?table=leave_requests')
+      .then(data => {
+        if (Array.isArray(data)) {
+          const myRequests = data.filter(r => String(r.user_id) === String(user?.id));
+          myRequests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setRequests(myRequests);
+        }
       })
-    })
-    .then(data => {
-      if (Array.isArray(data)) setRequests(data);
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {

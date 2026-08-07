@@ -2783,13 +2783,15 @@ export function AbsensiZuhur() {
             const { latitude, longitude } = position.coords;
             
             // Get saved school coordinates or use default
-            const schoolLatL = parseFloat(remoteStorage.getItem('school_lat_l') || '-0.502');
-            const schoolLngL = parseFloat(remoteStorage.getItem('school_lng_l') || '101.447');
-            const maxRadiusL = parseInt(remoteStorage.getItem('school_radius_l') || '200', 10);
+            const getValidFloat = (k, fallback) => { const v = parseFloat(remoteStorage.getItem(k) || fallback); return isNaN(v) ? parseFloat(fallback) : v; };
+            const getValidInt = (k, fallback) => { const v = parseInt(remoteStorage.getItem(k) || fallback, 10); return isNaN(v) ? parseInt(fallback, 10) : v; };
+            const schoolLatL = getValidFloat('school_lat_l', '-0.502');
+            const schoolLngL = getValidFloat('school_lng_l', '101.447');
+            const maxRadiusL = getValidInt('school_radius_l', '200');
             
-            const schoolLatP = parseFloat(remoteStorage.getItem('school_lat_p') || '-0.502');
-            const schoolLngP = parseFloat(remoteStorage.getItem('school_lng_p') || '101.447');
-            const maxRadiusP = parseInt(remoteStorage.getItem('school_radius_p') || '200', 10);
+            const schoolLatP = getValidFloat('school_lat_p', '-0.502');
+            const schoolLngP = getValidFloat('school_lng_p', '101.447');
+            const maxRadiusP = getValidInt('school_radius_p', '200');
             
             const R = 6371e3; // metres
             const φ1 = latitude * Math.PI/180;
