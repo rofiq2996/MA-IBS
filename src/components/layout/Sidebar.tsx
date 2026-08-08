@@ -38,6 +38,7 @@ import {
   UserPlus,
   Coins,
   Building2,
+  Trash2,
   Megaphone,
   Database,
   Target,
@@ -111,6 +112,7 @@ export function Sidebar({ unreadNotifCount = 0 }: { unreadNotifCount?: number })
         { to: '/admin/announcements', icon: Megaphone, label: 'Pengumuman' },
         { to: '/kalender-akademik', icon: CalendarDays, label: 'Kalender Akademik' },
         { to: '/settings', icon: FileCheck, label: 'Konfigurasi' },
+        { to: "/admin/reset", icon: Trash2, label: "Reset Data" },
         { to: '/notifications', icon: Bell, label: 'Notifikasi' },
       ];
     } else if (user?.role === 'ortu') {

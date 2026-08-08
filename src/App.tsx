@@ -18,6 +18,7 @@ import { AdminStudents } from './pages/AdminStudents';
 import { AdminAcademic } from './pages/AdminAcademic';
 import { AdminCalendar } from './pages/AdminCalendar';
 import { AdminSettings } from './pages/AdminSettings';
+import { AdminResetData } from "./pages/AdminResetData";
 import { AdminSarpras } from './pages/AdminSarpras';
 import { AdminAnnouncements } from './pages/AdminAnnouncements';
 import { AdminSubjects } from './pages/AdminSubjects';
@@ -163,6 +164,7 @@ export default function App() {
             <Route path="academic" element={<AdminAcademic />} />
             <Route path="kalender-akademik" element={<AdminCalendar />} />
             <Route path="settings" element={<AdminSettings />} />
+            <Route path="admin/reset" element={<AdminResetData />} />
             <Route path="admin/sarpras" element={<AdminSarpras />} />
             <Route path="admin/announcements" element={<AdminAnnouncements />} />
             <Route path="admin/subjects" element={<AdminSubjects />} />
